@@ -1,0 +1,24 @@
+<!doctype html><html><head><meta charset="utf-8"></head><body>
+<table><tr><td>税则子目：</td><td><input type="text" id="code"></td><td>关键字：</td><td><input type="text" id="kw"></td></tr></table>
+<button id="q" type="button">查询</button> <button type="button">重置</button>
+<table id="list"><thead><tr><th>子目号列</th><th>子目条文</th><th>查看更多</th></tr></thead><tbody></tbody></table>
+<div id="modal" style="display:none"></div>
+<script>
+const DATA = {"8516": "电热的快速热水器、储存式热水器、浸入式液体加热器；", "8517": "电话机，包括用于蜂窝网络的电话机："};
+const mode = new URLSearchParams(location.search).get("mode") || "popup";
+document.getElementById("q").onclick = () => setTimeout(() => {
+  const code = document.getElementById("code").value.trim();
+  const tbody = document.querySelector("#list tbody");
+  tbody.innerHTML = "";
+  for (const k of Object.keys(DATA).filter(k => k.startsWith(code))) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${k}</td><td>${DATA[k]}</td><td><button type="button">详细</button></td>`;
+    tr.querySelector("button").onclick = () => {
+      if (mode === "popup") window.open("detail.html?code=" + k, "_blank");
+      else { const m = document.getElementById("modal"); m.style.display = "block";
+             fetch("detail.html").then(r => r.text()).then(h => { m.innerHTML = new DOMParser().parseFromString(h, "text/html").body.innerHTML; }); }
+    };
+    tbody.appendChild(tr);
+  }
+}, 300);
+</script></body></html>

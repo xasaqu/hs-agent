@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HS 归类助手</title>
+<style>
+  :root {
+    --bg: #f6f6f3; --panel: #ffffff; --text: #1d1d1b; --muted: #6b6b66; --line: #e4e3dd;
+    --accent: #2f5bd3; --accent-soft: #e8eefc; --ok: #1f7a4d; --ok-soft: #e3f3ea;
+    --warn: #a35b00; --warn-soft: #fbf0df; --bad: #b42318; --bad-soft: #fdecea;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #161615; --panel: #1f1f1d; --text: #ecebe6; --muted: #9b9a93; --line: #33322f;
+      --accent: #7b9cff; --accent-soft: #232c45; --ok: #5cc28d; --ok-soft: #1c3127;
+      --warn: #e0a24a; --warn-soft: #3a2c17; --bad: #f2867c; --bad-soft: #3d1f1c;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.6 -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 28px 16px 60px; display: grid; grid-template-columns: 1fr 260px; gap: 24px; }
+  @media (max-width: 860px) { .wrap { grid-template-columns: 1fr; } }
+  header { grid-column: 1 / -1; display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  h1 { font-size: 22px; margin: 0; letter-spacing: .5px; }
+  .sub { color: var(--muted); font-size: 13px; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px; }
+  .stack > * + * { margin-top: 16px; }
+  .banner { padding: 10px 14px; border-radius: 10px; font-size: 14px; background: var(--warn-soft); color: var(--warn); }
+  textarea {
+    width: 100%; min-height: 110px; resize: vertical; padding: 12px; font: inherit; color: var(--text);
+    background: var(--bg); border: 1px solid var(--line); border-radius: 10px; outline: none;
+  }
+  textarea:focus, input[type=text]:focus { border-color: var(--accent); }
+  .hint { color: var(--muted); font-size: 13px; margin: 6px 0 10px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    border: 1px solid var(--line); background: transparent; color: var(--muted); border-radius: 999px;
+    padding: 3px 10px; font: inherit; font-size: 13px; cursor: pointer;
+  }
+  .chip:hover { color: var(--text); border-color: var(--muted); }
+  .row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 12px; }
+  .row .grow { flex: 1; }
+  label.toggle { display: flex; align-items: center; gap: 6px; font-size: 14px; color: var(--muted); cursor: pointer; }
+  button.primary {
+    background: var(--accent); color: #fff; border: 0; border-radius: 10px; padding: 9px 22px;
+    font: inherit; font-weight: 600; cursor: pointer;
+  }
+  button.primary:disabled { opacity: .5; cursor: default; }
+  button.ghost {
+    background: transparent; border: 1px solid var(--line); color: var(--text); border-radius: 10px;
+    padding: 8px 14px; font: inherit; cursor: pointer;
+  }
+  h2 { font-size: 15px; margin: 0 0 10px; display: flex; align-items: center; gap: 8px; }
+  .spinner { width: 12px; height: 12px; border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  ol.timeline { list-style: none; margin: 0; padding: 0; }
+  ol.timeline li { display: grid; grid-template-columns: 18px 1fr auto; gap: 8px; padding: 5px 0; font-size: 14px; border-top: 1px dashed var(--line); }
+  ol.timeline li:first-child { border-top: 0; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 8px; background: var(--muted); }
+  .k-search .dot { background: var(--accent); } .k-browse .dot { background: var(--accent); opacity: .6; }
+  .k-ask .dot { background: var(--warn); } .k-warn .dot, .k-error .dot { background: var(--bad); } .k-done .dot { background: var(--ok); }
+  .detail { color: var(--muted); font-size: 13px; }
+  .time { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .ask { border-color: var(--warn); }
+  .ask .q { font-size: 15px; margin-bottom: 10px; }
+  input[type=text] {
+    width: 100%; padding: 9px 12px; font: inherit; color: var(--text); background: var(--bg);
+    border: 1px solid var(--line); border-radius: 10px; outline: none;
+  }
+  .code-line { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .code { font-family: var(--mono); font-size: 34px; font-weight: 700; letter-spacing: 1px; }
+  .badge { font-size: 12px; padding: 2px 9px; border-radius: 999px; white-space: nowrap; }
+  .b-ok { background: var(--ok-soft); color: var(--ok); } .b-warn { background: var(--warn-soft); color: var(--warn); }
+  .en { color: var(--muted); font-size: 14px; }
+  .meter { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--muted); }
+  .bar { flex: 0 0 160px; height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--ok); }
+  .bar.low i { background: var(--warn); }
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
+  .cell { background: var(--bg); border-radius: 10px; padding: 10px 12px; }
+  .cell .lbl { font-size: 12px; color: var(--muted); }
+  .cell .val { font-size: 16px; font-weight: 600; }
+  .cell .val.mono { font-family: var(--mono); }
+  .note { font-size: 13px; color: var(--muted); }
+  .path { display: flex; flex-wrap: wrap; gap: 4px; font-size: 13px; color: var(--muted); }
+  .path span + span::before { content: "›"; margin-right: 4px; }
+  ol.steps { margin: 0; padding-left: 20px; }
+  ol.steps li { margin: 4px 0; }
+  .tag { font-family: var(--mono); font-size: 13px; background: var(--accent-soft); color: var(--accent); padding: 1px 6px; border-radius: 6px; margin-right: 6px; }
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; }
+  .tags span { font-size: 13px; background: var(--bg); border: 1px solid var(--line); padding: 1px 8px; border-radius: 6px; }
+  h3 { font-size: 13px; color: var(--muted); font-weight: 600; margin: 0 0 6px; }
+  .foot { font-size: 12px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 10px; }
+  .err { color: var(--bad); background: var(--bad-soft); padding: 10px 14px; border-radius: 10px; font-size: 14px; white-space: pre-wrap; }
+  aside h2 { color: var(--muted); font-size: 13px; }
+  .hist { list-style: none; margin: 0; padding: 0; }
+  .hist li { padding: 8px 6px; border-radius: 8px; cursor: pointer; font-size: 13px; }
+  .hist li:hover { background: var(--panel); }
+  .hist .d { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .hist .c { font-family: var(--mono); color: var(--muted); font-size: 12px; }
+  .status { font-size: 12px; color: var(--muted); line-height: 1.8; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>HS 归类助手</h1>
+    <span class="sub">描述商品，按「章 → 品目 → 子目」逐层比较，给出编码和依据</span>
+  </header>
+
+  <main class="stack">
+    <div id="banner" class="banner" hidden></div>
+
+    <section class="panel">
+      <textarea id="desc" placeholder="例如：家用电热空气炸锅，5L，塑料外壳，额定功率 1500W，靠电热管和风扇循环热风烹饪"></textarea>
+      <div class="hint">写清楚：商品名称、材质及占比、用途、工作原理（是否电动、电热）、是否成套销售。越具体越准。</div>
+      <div class="chips" id="examples"></div>
+      <div class="row">
+        <label class="toggle"><input type="checkbox" id="allowAsk" checked> 信息不够时允许追问</label>
+        <span class="grow"></span>
+        <button class="primary" id="go">开始归类</button>
+      </div>
+    </section>
+
+    <section class="panel ask" id="askBox" hidden>
+      <h2>需要补充信息</h2>
+      <div class="q" id="askQ"></div>
+      <input type="text" id="askA" placeholder="直接输入回答，回车提交">
+      <div class="row">
+        <button class="primary" id="askSend">回答</button>
+        <button class="ghost" id="askSkip">不知道，按常见情况</button>
+      </div>
+    </section>
+
+    <section class="panel" id="resultBox" hidden></section>
+
+    <section class="panel" id="progressBox" hidden>
+      <h2><span class="spinner" id="spin"></span><span id="progTitle">归类过程</span></h2>
+      <ol class="timeline" id="timeline"></ol>
+    </section>
+  </main>
+
+  <aside class="stack">
+    <div>
+      <h2>本次记录</h2>
+      <ul class="hist" id="hist"><li class="note" style="cursor:default">还没有记录</li></ul>
+    </div>
+    <div class="status" id="status"></div>
+  </aside>
+</div>
+
+<script>
+const EXAMPLES = [
+  "家用电热空气炸锅，5L，额定功率 1500W",
+  "男式圆领短袖 T 恤，100% 棉，针织",
+  "电动牙刷，声波震动，内置充电电池",
+  "航拍无人机，最大起飞重量 249g，带摄像头",
+  "办公转椅，可升降，金属框架，网布靠背",
+];
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+let current = null, timer = null, lastAskQ = "";
+
+for (const ex of EXAMPLES) {
+  const b = document.createElement("button");
+  b.className = "chip"; b.textContent = ex;
+  b.onclick = () => { $("desc").value = ex; $("desc").focus(); };
+  $("examples").appendChild(b);
+}
+
+async function api(path, body) {
+  const opt = body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {};
+  const r = await fetch(path, opt);
+  return r.json();
+}
+
+async function loadStatus() {
+  const s = await api("/api/status");
+  $("status").innerHTML =
+    `模型：${esc(s.model)}<br>HS 2022 子目：${s.hs_count} 个<br>` +
+    `中国 10 位编码：${s.cn_count ? s.cn_count + " 条" : "未导入"}<br>类注、章注：${s.notes ? s.notes + " 个文件" : "未补充"}`;
+  if (!s.api_key) {
+    $("banner").hidden = false;
+    $("banner").textContent = "还没有配置大模型 API Key：在项目文件夹的 .env 里填写 LLM_API_KEY，然后重新启动。";
+  }
+}
+
+async function start() {
+  const description = $("desc").value.trim();
+  if (!description) { $("desc").focus(); return; }
+  $("go").disabled = true;
+  const r = await api("/api/classify", { description, allow_ask: $("allowAsk").checked });
+  if (r.error) { $("go").disabled = false; alert(r.error); return; }
+  watch(r.id);
+}
+
+function watch(id) {
+  current = id; lastAskQ = "";
+  clearInterval(timer);
+  $("resultBox").hidden = true; $("askBox").hidden = true;
+  $("timeline").innerHTML = ""; $("progressBox").hidden = false;
+  poll();
+  timer = setInterval(poll, 700);
+}
+
+async function poll() {
+  const id = current;
+  const job = await api(`/api/jobs/${id}`);
+  if (id !== current) return;
+  renderTimeline(job);
+  const running = job.status === "running" || job.status === "asking";
+  $("spin").hidden = !running;
+  $("progTitle").textContent = running ? "正在归类…" : "归类过程";
+  if (job.status === "asking") {
+    if (job.question !== lastAskQ) {
+      lastAskQ = job.question;
+      $("askQ").textContent = job.question; $("askA").value = "";
+      $("askBox").hidden = false; $("askA").focus();
+    }
+  } else {
+    $("askBox").hidden = true;
+  }
+  if (!running) {
+    clearInterval(timer);
+    $("go").disabled = false;
+    renderResult(job);
+    loadHistory();
+  }
+}
+
+function renderTimeline(job) {
+  $("timeline").innerHTML = job.events.map((e) => `
+    <li class="k-${esc(e.kind)}"><span class="dot"></span>
+      <div>${esc(e.text)}${e.detail ? `<div class="detail">${esc(e.detail)}</div>` : ""}</div>
+      <span class="time">${Number(e.t).toFixed(1)}s</span></li>`).join("");
+}
+
+function renderResult(job) {
+  const box = $("resultBox");
+  box.hidden = false;
+  const res = job.result || {};
+  const a = res.answer;
+  if (!a) {
+    box.innerHTML = `<div class="err">没有完成归类。${esc(job.error)}</div>`;
+    return;
+  }
+  const pct = Math.round(a.confidence * 100);
+  const cn = a.cn_code
+    ? `<div class="grid2">
+         <div class="cell"><div class="lbl">中国税则编码</div><div class="val mono">${esc(a.cn_fmt)}</div><div class="note">${esc(a.cn_name)}</div></div>
+         <div class="cell"><div class="lbl">出口退税率</div><div class="val">${a.refund_rate == null ? "未收录" : esc(a.refund_rate) + "%"}</div><div class="note">增值税征税率 ${esc(a.vat_rate || "未注明")}${a.vat_rate && !a.vat_rate.includes("/") ? "%" : ""}</div></div>
+         <div class="cell"><div class="lbl">数据版本</div><div class="val" style="font-size:14px">${esc(a.data_version || "未注明")}</div><div class="note">出口退税率文库</div></div>
+       </div>
+       ${a.refund_note ? `<div class="banner">${esc(a.refund_note)}</div>` : ""}`
+    : `<div class="note">还没有导入中国 10 位编码和退税率，只给出 6 位国际编码。退税率请到国家税务总局「出口退税率查询」核对，导入方法见 README。</div>`;
+  const list = (title, items) => items && items.length ? `<div><h3>${title}</h3>${items}</div>` : "";
+  box.innerHTML = `
+    <div class="stack">
+      <div class="code-line">
+        <span class="code">${esc(a.hs6_fmt)}</span>
+        <button class="ghost" id="copy">复制</button>
+        <span class="badge ${a.need_review ? "b-warn" : "b-ok"}">${a.need_review ? "建议人工复核" : "置信度较高"}</span>
+      </div>
+      <div class="en">${esc(a.hs6_desc)}</div>
+      <div class="meter"><span>置信度</span><span class="bar ${a.need_review ? "low" : ""}"><i style="width:${pct}%"></i></span><b>${pct}%</b></div>
+      <div class="path">${a.path_nodes.map((n) => `<span title="${esc(n.desc)}">${esc(n.label)}</span>`).join("")}</div>
+      ${cn}
+      ${list("归类要素", `<div>${esc(a.product_summary)}</div>`)}
+      ${list("逐层选择", a.steps.length ? `<ol class="steps">${a.steps.map((s) => `<li><span class="tag">${esc(s.code)}</span>${esc(s.reason)}</li>`).join("")}</ol>` : "")}
+      ${list("依据", a.rules.length ? `<div class="tags">${a.rules.map((r) => `<span>${esc(r)}</span>`).join("")}</div>` : "")}
+      ${list("缺少的信息", a.missing_info.length ? `<ul class="steps">${a.missing_info.map((m) => `<li>${esc(m)}</li>`).join("")}</ul>` : "")}
+      ${list("其他可能", a.alternatives.length ? `<ul class="steps">${a.alternatives.map((x) => `<li><span class="tag">${esc(x.code)}</span><span class="note">${esc(x.desc)}</span></li>`).join("")}</ul>` : "")}
+      <div class="foot">${res.steps} 步 · 追问 ${res.questions} 次 · ${res.seconds} 秒 · 约 ${res.cost_yuan} 元<br>
+        结果仅供参考，不构成归类依据，正式结论以海关审核或预裁定为准。</div>
+    </div>`;
+  $("copy").onclick = () => navigator.clipboard.writeText(a.hs6_fmt).then(() => { $("copy").textContent = "已复制"; });
+}
+
+async function loadHistory() {
+  const items = await api("/api/jobs");
+  if (!items.length) return;
+  $("hist").innerHTML = items.map((h) => `
+    <li data-id="${esc(h.id)}"><div class="d">${esc(h.description)}</div>
+      <div class="c">${h.hs6 ? esc(h.hs6) : h.status === "error" ? "未完成" : "进行中…"}</div></li>`).join("");
+  for (const li of $("hist").querySelectorAll("li[data-id]")) {
+    li.onclick = () => { $("desc").value = li.querySelector(".d").textContent; watch(li.dataset.id); };
+  }
+}
+
+async function sendAnswer(text) {
+  $("askBox").hidden = true;
+  await api(`/api/jobs/${current}/answer`, { answer: text });
+}
+
+$("go").onclick = start;
+$("desc").addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) start(); });
+$("askSend").onclick = () => sendAnswer($("askA").value);
+$("askA").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.isComposing) sendAnswer($("askA").value); });
+$("askSkip").onclick = () => sendAnswer("");
+loadStatus();
+loadHistory();
+</script>
+</body>
+</html>

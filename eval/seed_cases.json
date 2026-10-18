@@ -1,0 +1,397 @@
+{
+ "说明": "种子评测集：中文商品描述 + HS 2022 版 6 位标准答案，由 Claude 按税则条文整理，难度标签为主观判断。正式评测前请核对答案，并补充官方归类决定或预裁定案例（见 README）。",
+ "cases": [
+  {
+   "id": "air-fryer",
+   "description": "家用电热空气炸锅，5L，塑料外壳，额定功率 1500W，通过电热管加热和风扇循环热风烹饪食物",
+   "hs6": "851660",
+   "difficulty": "易",
+   "source": "seed"
+  },
+  {
+   "id": "smartphone",
+   "description": "5G 智能手机，6.7 英寸屏幕，安卓系统，可打电话和上网",
+   "hs6": "851713",
+   "difficulty": "易",
+   "source": "seed"
+  },
+  {
+   "id": "tshirt-cotton",
+   "description": "男式圆领短袖 T 恤，100% 棉，针织面料",
+   "hs6": "610910",
+   "difficulty": "易",
+   "source": "seed"
+  },
+  {
+   "id": "tshirt-poly",
+   "description": "女式运动 T 恤，100% 涤纶，针织面料",
+   "hs6": "610990",
+   "difficulty": "中",
+   "source": "seed"
+  },
+  {
+   "id": "led-bulb",
+   "description": "LED 球泡灯，E27 灯头，9W，220V 家用照明",
+   "hs6": "853952",
+   "difficulty": "易",
+   "source": "seed"
+  },
+  {
+   "id": "li-cell",
+   "description": "圆柱形锂离子蓄电池单体，18650 型，3.7V，可充电",
+   "hs6": "850760",
+   "difficulty": "易",
+   "source": "seed"
+  },
+  {
+   "id": "laptop",
+   "description": "笔记本电脑，14 英寸，重 1.3kg，含键盘和显示屏",
+   "hs6": "847130",
+   "difficulty": "易",
+   "source": "seed"
+  },
+  {
+   "id": "vacuum-flask",
+   "description": "不锈钢真空保温杯，500ml，带杯盖",
+   "hs6": "961700",
+   "difficulty": "中",
+   "source": "seed"
+  },
+  {
+   "id": "e-toothbrush",
+   "description": "电动牙刷，声波震动，内置充电电池和电动机",
+   "hs6": "850980",
+   "difficulty": "难",
+   "source": "seed"
+  },
+  {
+   "id": "hair-dryer",
+   "description": "家用电吹风机，电热，2000W",
+   "hs6": "851631",
+   "difficulty": "易",
+   "source": "seed"
+  },
+  {
+   "id": "microwave",
+   "description": "家用微波炉，20L",
+   "hs6": "851650",
+   "difficulty": "易",
+   "source": "seed"
+  },
+  {
+   "id": "kettle",
+   "description": "家用电热水壶，1.7L，不锈钢内胆",
+   "hs6": "851679",
+   "difficulty": "中",
+   "source": "seed"
+  },
+  {
+   "id": "coffee-maker",
+   "description": "家用滴滤式电热咖啡机",
+   "hs6": "851671",
+   "difficulty": "易",
+   "source": "seed"
+  },
+  {
+   "id": "iron",
+   "description": "家用电熨斗，蒸汽型",
+   "hs6": "851640",
+   "difficulty": "易",
+   "source": "seed"
+  },
+  {
+   "id": "vacuum-cleaner",
+   "description": "家用吸尘器，自带电动机，功率 1200W，集尘盒容积 1.5L",
+   "hs6": "850811",
+   "difficulty": "中",
+   "source": "seed"
+  },
+  {
+   "id": "desk-fan",
+   "description": "台式电风扇，自带电动机，输出功率 40W",
+   "hs6": "841451",
+   "difficulty": "中",
+   "source": "seed"
+  },
+  {
+   "id": "fridge",
+   "description": "家用冷藏冷冻组合冰箱，双门，各自装有单独外门",
+   "hs6": "841810",
+   "difficulty": "中",
+   "source": "seed"
+  },
+  {
+   "id": "washer",
+   "description": "全自动家用洗衣机，波轮式，干衣量 8kg",
+   "hs6": "845011",
+   "difficulty": "中",
+   "source": "seed"
+  },
+  {
+   "id": "monitor",
+   "description": "液晶显示器，27 英寸，专用于连接电脑主机，无电视接收功能",
+   "hs6": "852852",
+   "difficulty": "难",
+   "source": "seed"
+  },
+  {
+   "id": "keyboard",
+   "description": "USB 有线机械键盘，单独包装销售，用于台式电脑",
+   "hs6": "847160",
+   "difficulty": "中",
+   "source": "seed"
+  },
+  {
+   "id": "usb-drive",
+   "description": "U 盘，闪存存储，64GB，USB 接口",
+   "hs6": "852351",
+   "difficulty": "中",
+   "source": "seed"
+  },
+  {
+   "id": "bicycle",
+   "description": "成人非机动自行车，铝合金车架，26 寸",
+   "hs6": "871200",
+   "difficulty": "易",
+   "source": "seed"
+  },
+  {
+   "id": "e-bike",
+   "description": "电动自行车，带脚踏，装有电动机，锂电池驱动",
+   "hs6": "871160",
+   "difficulty": "中",
+   "source": "seed"
+  },
+  {
+   "id": "toy-blocks",
+   "description": "儿童塑料拼插积木玩具，零售盒装",
+   "hs6": "950300",
+   "difficulty": "易",
+   "source": "seed"
+  },
+  {
+   "id": "down-jacket",
+   "description": "男式羽绒服，面料为 100% 聚酯纤维梭织布，带帽",
+   "hs6": "620140",
+   "difficulty": "难",
+   "source": "seed"
+  },
+  {
+   "id": "jeans",
+   "description": "女式牛仔长裤，98% 棉 2% 氨纶，梭织",
+   "hs6": "620462",
+   "difficulty": "中",
+   "source": "seed"
+  },
+  {
+   "id": "sneakers",
+   "description": "运动鞋，橡胶外底，鞋面为纺织材料",
+   "hs6": "640411",
+   "difficulty": "中",
+   "source": "seed"
+  },
+  {
+   "id": "leather-bag",
+   "description": "女士手提包，外表面为牛皮革",
+   "hs6": "420221",
+   "difficulty": "中",
+   "source": "seed"
+  },
+  {
+   "id": "wok",
+   "description": "不锈钢炒锅，家用厨房用",
+   "hs6": "732393",
+   "difficulty": "中",
+   "source": "seed"
+  },
+  {
+   "id": "porcelain-plate",
+   "description": "瓷制餐盘，家用",
+   "hs6": "691110",
+   "difficulty": "易",
+   "source": "seed"
+  },
+  {
+   "id": "plastic-box",
+   "description": "塑料保鲜盒，家用厨房盛装食物",
+   "hs6": "392410",
+   "difficulty": "易",
+   "source": "seed"
+  },
+  {
+   "id": "bedroom-furniture",
+   "description": "实木双人床，卧室用",
+   "hs6": "940350",
+   "difficulty": "中",
+   "source": "seed"
+  },
+  {
+   "id": "office-chair",
+   "description": "办公转椅，可升降，金属框架，网布靠背",
+   "hs6": "940139",
+   "difficulty": "难",
+   "source": "seed"
+  },
+  {
+   "id": "spring-mattress",
+   "description": "弹簧床垫，内置弹簧和海绵",
+   "hs6": "940429",
+   "difficulty": "难",
+   "source": "seed"
+  },
+  {
+   "id": "pv-module",
+   "description": "晶体硅太阳能光伏组件，已组装成板",
+   "hs6": "854143",
+   "difficulty": "中",
+   "source": "seed"
+  },
+  {
+   "id": "ev-car",
+   "description": "纯电动乘用车，5 座，仅由电动机驱动",
+   "hs6": "870380",
+   "difficulty": "易",
+   "source": "seed"
+  },
+  {
+   "id": "tyre",
+   "description": "乘用车用新的充气橡胶轮胎",
+   "hs6": "401110",
+   "difficulty": "易",
+   "source": "seed"
+  },
+  {
+   "id": "green-tea",
+   "description": "绿茶，未发酵，每包净重 250g",
+   "hs6": "090210",
+   "difficulty": "易",
+   "source": "seed"
+  },
+  {
+   "id": "garlic",
+   "description": "鲜大蒜头，未冷冻",
+   "hs6": "070320",
+   "difficulty": "易",
+   "source": "seed"
+  },
+  {
+   "id": "honey",
+   "description": "天然蜂蜜",
+   "hs6": "040900",
+   "difficulty": "易",
+   "source": "seed"
+  },
+  {
+   "id": "nitrile-gloves",
+   "description": "一次性丁腈手套，非医疗、非外科用，工业清洁用",
+   "hs6": "401519",
+   "difficulty": "难",
+   "source": "seed"
+  },
+  {
+   "id": "inkjet-printer",
+   "description": "喷墨打印机，单一打印功能，可通过 USB 连接电脑",
+   "hs6": "844332",
+   "difficulty": "中",
+   "source": "seed"
+  },
+  {
+   "id": "drone",
+   "description": "航拍无人机，最大起飞重量 249g，带摄像头",
+   "hs6": "880621",
+   "difficulty": "难",
+   "source": "seed"
+  },
+  {
+   "id": "smartwatch",
+   "description": "智能手表，可通过蓝牙与手机连接收发消息",
+   "hs6": "851762",
+   "difficulty": "难",
+   "source": "seed"
+  },
+  {
+   "id": "phone-charger",
+   "description": "手机充电器，开关电源适配器，输出 5V/2A",
+   "hs6": "850440",
+   "difficulty": "中",
+   "source": "seed"
+  },
+  {
+   "id": "usb-cable",
+   "description": "USB 数据线，铜导体，两端装有接头，电压 5V",
+   "hs6": "854442",
+   "difficulty": "中",
+   "source": "seed"
+  },
+  {
+   "id": "game-console",
+   "description": "家用视频游戏机主机，连接电视使用",
+   "hs6": "950450",
+   "difficulty": "中",
+   "source": "seed"
+  },
+  {
+   "id": "guitar",
+   "description": "木制民谣吉他（原声吉他），六弦",
+   "hs6": "920290",
+   "difficulty": "中",
+   "source": "seed"
+  },
+  {
+   "id": "sunglasses",
+   "description": "太阳镜，塑料镜框",
+   "hs6": "900410",
+   "difficulty": "易",
+   "source": "seed"
+  },
+  {
+   "id": "toothpaste",
+   "description": "牙膏，含氟，零售装 120g",
+   "hs6": "330610",
+   "difficulty": "易",
+   "source": "seed"
+  },
+  {
+   "id": "shampoo",
+   "description": "洗发水，零售装 500ml",
+   "hs6": "330510",
+   "difficulty": "易",
+   "source": "seed"
+  },
+  {
+   "id": "bed-sheet",
+   "description": "纯棉床单，梭织，未印花",
+   "hs6": "630231",
+   "difficulty": "中",
+   "source": "seed"
+  },
+  {
+   "id": "towel",
+   "description": "纯棉毛巾，毛圈布",
+   "hs6": "630260",
+   "difficulty": "中",
+   "source": "seed"
+  },
+  {
+   "id": "carton",
+   "description": "瓦楞纸箱，用于包装",
+   "hs6": "481910",
+   "difficulty": "易",
+   "source": "seed"
+  },
+  {
+   "id": "ballpen",
+   "description": "塑料圆珠笔",
+   "hs6": "960810",
+   "difficulty": "易",
+   "source": "seed"
+  },
+  {
+   "id": "quartz-watch",
+   "description": "石英手表，指针式显示，不锈钢表壳，电池驱动",
+   "hs6": "910211",
+   "difficulty": "中",
+   "source": "seed"
+  }
+ ]
+}

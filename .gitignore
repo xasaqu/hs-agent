@@ -1,0 +1,7 @@
+.env
+.venv/
+__pycache__/
+agent_data/
+eval/cross_cases.json
+.DS_Store
+.pytest_cache/
