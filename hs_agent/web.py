@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import base64
 import json
 import threading
 import time
@@ -17,13 +18,24 @@ from dataclasses import dataclass, field
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Awaitable, Callable
+from urllib.parse import quote
 
+from pydantic import ValidationError
+
+from . import quotes as quotes_mod
 from .agent import RunResult, classify, load_data
+from .baselines import make_completer
+from .batch import Batch, BatchError, read_table, template_excel
+from .duty import Policy
+from .landed import Quote, Shipment, calc, check_bill, cn_item, compare
+from .us_hts import UsHts
+from .history import HistoryError, answer_of, open_history
 from .config import Config
-from .tariff import Tariff, fmt_code
+from .tariff import Tariff, fmt_code, normalize_code
 from .toolbox import no_more_info
 
 STATIC = Path(__file__).parent / "static"
+MAX_UPLOAD = 8 * 1024 * 1024  # 上传清单的大小上限
 ANSWER_TIMEOUT = 900  # 追问等用户回答的最长时间（秒）
 UNKNOWN = "不知道，请按最常见的情况假设，并写进 missing_info。"
 
@@ -34,6 +46,14 @@ def describe_event(record: dict) -> dict | None:
     """把一条运行日志翻译成界面上的一行进度。"""
     if record.get("event") == "error":
         return {"kind": "error", "text": f"出错：{record.get('error', '')}"}
+    if record.get("event") == "reuse":
+        names = {"corrected": "人工修正", "confirmed": "人工确认", "agent": "Agent 结果"}
+        return {"kind": "done", "text": f"记录库里有相同的商品，沿用记录 #{record['record_id']}（{names.get(record['status'], '')}）",
+                "detail": "没有调用大模型。要重新归类，勾选「不用历史记录，重新归类」"}
+    if record.get("event") == "precedents":
+        recs = record.get("records", [])
+        return {"kind": "browse", "text": f"找到 {len(recs)} 条人工确认或修正过的相似记录，作为判例参考",
+                "detail": "、".join(f"#{r['id']} {fmt_code(r['code'])}（相似度 {r['score']:.0%}）" for r in recs)}
     if record.get("event") != "action":
         return None
     tool, args, ok, note = record["tool"], record.get("args", {}), record.get("ok", True), record.get("note", "")
@@ -76,7 +96,7 @@ def result_payload(r: RunResult, tariff: Tariff) -> dict:
     out: dict = {
         "steps": r.steps, "questions": r.questions, "seconds": r.seconds, "cost_yuan": r.cost_yuan,
         "tokens": r.input_tokens + r.output_tokens, "rejections": r.finish_rejections, "log": str(r.log_path),
-        "answer": None,
+        "record_id": r.record_id, "reused": r.reused, "precedents": r.precedents, "answer": None,
     }
     a = r.answer
     if a:
@@ -94,6 +114,7 @@ class Job:
     id: str
     description: str
     allow_ask: bool
+    fresh: bool = False
     created: float = field(default_factory=time.time)
     status: str = "running"  # running / asking / done / error
     events: list[dict] = field(default_factory=list)
@@ -133,12 +154,35 @@ class Job:
         }
 
 
+@dataclass
+class BatchJob:
+    id: str
+    filename: str
+    batch: Batch
+    status: str = "running"  # running / done / cancelled / error
+    error: str = ""
+    output: Path | None = None
+
+    def public(self) -> dict:
+        b = self.batch
+        rows = [{"index": r.index, "description": r.description[:80], "status": r.status,
+                 "code": r.values.get("建议编码", ""), "review": r.values.get("需人工复核") == "是",
+                 "note": r.values.get("备注", "")} for r in b.rows]
+        return {"id": self.id, "filename": self.filename, "status": self.status, "error": self.error,
+                "counts": b.counts(), "rows": rows,
+                "columns": [b.sheet.headers[i] for i in b.sheet.used_cols],
+                "seconds": round((b.finished or time.time()) - b.started, 1)}
+
+
 class App:
-    def __init__(self, config: Config, classify_fn: ClassifyFn = classify, model=None):
+    def __init__(self, config: Config, classify_fn: ClassifyFn = classify, model=None, completer=None):
         self.config = config
+        self.completer = completer  # 报价提取用的大模型；测试时传入假的
+        self._us: tuple[float, UsHts] | None = None
         self.classify_fn = classify_fn
         self.model = model  # 测试时传入假模型
         self.jobs: dict[str, Job] = {}
+        self.batches: dict[str, BatchJob] = {}
         self.tariff, self.cn = load_data(config.hs_file, config.sections_file, config.cn_file)
 
     def status(self) -> dict:
@@ -149,10 +193,11 @@ class App:
             "hs_count": sum(1 for n in self.tariff.nodes.values() if n.level == 6),
             "cn_count": len(self.cn.items),
             "notes": len(notes),
+            "history": self.history_db.counts() if self.config.history_enabled else None,
         }
 
-    def start(self, description: str, allow_ask: bool) -> Job:
-        job = Job(id=uuid.uuid4().hex[:10], description=description, allow_ask=allow_ask)
+    def start(self, description: str, allow_ask: bool, fresh: bool = False) -> Job:
+        job = Job(id=uuid.uuid4().hex[:10], description=description, allow_ask=allow_ask, fresh=fresh)
         self.jobs[job.id] = job
         threading.Thread(target=self._run, args=(job,), daemon=True).start()
         return job
@@ -160,7 +205,7 @@ class App:
     def _run(self, job: Job) -> None:
         try:
             r = asyncio.run(self.classify_fn(
-                job.description, self.config, answerer=job.ask, model=self.model, on_event=job.on_event,
+                job.description, self.config, answerer=job.ask, model=self.model, on_event=job.on_event, fresh=job.fresh,
             ))
             job.result = result_payload(r, self.tariff)
             job.error = r.error
@@ -170,6 +215,137 @@ class App:
         except BaseException as e:  # 包括缺少 Key 时的 SystemExit
             job.error = str(e) or type(e).__name__
             job.status = "error"
+
+    @property
+    def history_db(self):
+        return open_history(self.config.data_dir / "history.db")
+
+    def review(self, rid: int, action: str, code: str = "", note: str = "") -> dict:
+        """人工确认或修正一条记录，返回更新后的记录和对应的结果。"""
+        h = self.history_db
+        rec = h.confirm(rid) if action == "confirm" else h.correct(rid, code, note, self.tariff, self.cn)
+        answer = answer_of(rec, self.tariff, self.cn, self.config.review_threshold)
+        for job in self.jobs.values():  # 页面上已有的结果也跟着更新
+            if job.result and job.result.get("record_id") == rid:
+                job.result["answer"] = self._answer_dict(answer)
+        return {"record": rec.public(), "answer": self._answer_dict(answer)}
+
+    def _answer_dict(self, a) -> dict:
+        d = a.model_dump()
+        d["hs6_fmt"] = fmt_code(a.hs6)
+        d["cn_fmt"] = fmt_code(a.cn_code) if a.cn_code else ""
+        d["path_nodes"] = [{"label": self.tariff.label(n), "desc": n.desc} for n in self.tariff.path(a.hs6)]
+        d["alternatives"] = [{"code": fmt_code(c), "desc": self.tariff.get(c).desc} for c in a.alternatives if self.tariff.get(c)]
+        return d
+
+    def start_batch(self, filename: str, data: bytes) -> BatchJob:
+        """读清单并在后台逐行归类；读不了时抛出 BatchError。"""
+        sheet = read_table(data, filename)
+        batch = Batch(sheet, self.config, classify_fn=self.classify_fn, model=self.model,
+                      concurrency=self.config.batch_concurrency)
+        job = BatchJob(id=uuid.uuid4().hex[:10], filename=filename, batch=batch)
+        self.batches[job.id] = job
+        threading.Thread(target=self._run_batch, args=(job,), daemon=True).start()
+        return job
+
+    def _run_batch(self, job: BatchJob) -> None:
+        try:
+            asyncio.run(job.batch.run())
+            job.status = "cancelled" if job.batch.cancelled else "done"
+        except BaseException as e:
+            job.error = str(e) or type(e).__name__
+            job.status = "error"
+        try:  # 结果另存一份到 agent_data/batch/，网页关掉也找得到
+            out = self.config.data_dir / "batch" / f"{time.strftime('%Y%m%d-%H%M%S')}-{Path(job.filename).stem}-归类结果.xlsx"
+            out.parent.mkdir(parents=True, exist_ok=True)
+            out.write_bytes(job.batch.to_excel())
+            job.output = out
+        except OSError:
+            pass
+
+    # ---------- 头程成本 ----------
+
+    @property
+    def us_hts(self) -> UsHts:
+        """美国税则：文件更新后（比如刚下载完）自动重新读取，不用重启。"""
+        f = self.config.us_hts_file
+        mtime = f.stat().st_mtime if f.is_file() else 0
+        if not self._us or self._us[0] != mtime:
+            self._us = (mtime, UsHts(f))
+        return self._us[1]
+
+    @property
+    def policy(self) -> Policy:
+        return Policy(self.config.us_policy_file, self.config.us_exempt_file, self.config.us_301_file)
+
+    @property
+    def ledger(self):
+        return quotes_mod.open_ledger(self.config.data_dir / "logistics.db")
+
+    def landed_status(self) -> dict:
+        hts, pol = self.us_hts, self.policy
+        return {"us_hts": {"loaded": hts.loaded, "count": len(hts.lines), **{k: hts.meta.get(k) for k in ("source", "saved", "missing_chapters")}},
+                "exempt_count": len(pol.exempt), "s301_count": len(pol.s301), "policy_updated": pol.data.get("updated", ""),
+                "records": self.ledger.count(), "api_key": bool(self.config.llm_api_key) or self.completer is not None}
+
+    def lookup(self, code: str) -> dict:
+        code = normalize_code(code)
+        item = cn_item(self.cn, code) if len(code) in (8, 10) else None
+        hts = self.us_hts
+        lines = [u.public() for u in hts.under(code[:6])][:80] if hts.loaded and len(code) >= 6 else []
+        return {"hs6": fmt_code(code[:6]) if len(code) >= 6 else "", "us_loaded": hts.loaded, "us_lines": lines,
+                "cn": {"code": fmt_code(item.code), "name": item.name, "refund_rate": item.refund_rate, "vat_rate": item.vat_rate} if item else None}
+
+    def _complete(self):
+        if self.completer:
+            return self.completer
+        if not self.config.llm_api_key:
+            raise quotes_mod.QuoteError("没有配置大模型 API Key，不能自动识别。可以用报价模板填好后上传。")
+        return make_completer(self.config)
+
+    def extract_quotes(self, body: dict) -> dict:
+        shipment = None
+        if body.get("shipment"):
+            try:
+                shipment = Shipment.model_validate(body["shipment"])
+            except ValidationError:
+                shipment = None
+        text = str(body.get("text") or "")
+        if body.get("data"):
+            data = base64.b64decode(str(body["data"]), validate=True)
+            found, text = quotes_mod.read_file(data, str(body.get("filename") or "报价.xlsx"))
+            if found:
+                return {"quotes": [q.model_dump() for q in found], "via": "template", "cost_yuan": 0}
+        found, i, o = asyncio.run(quotes_mod.extract(text, shipment, self._complete()))
+        cost = round((i * self.config.price_input_per_m + o * self.config.price_output_per_m) / 1_000_000, 4)
+        return {"quotes": [q.model_dump() for q in found], "via": "ai", "cost_yuan": cost}
+
+    def calc_landed(self, body: dict) -> dict:
+        shipment = Shipment.model_validate(body["shipment"])
+        quotes = [Quote.model_validate(q) for q in body.get("quotes") or []]
+        if not quotes:
+            raise ValueError("请先添加至少一个报价。")
+        for k, q in enumerate(quotes):
+            q.id = q.id or f"q{k + 1}"
+        hts, pol = self.us_hts, self.policy
+        results = [calc(shipment, q, hts, pol, self.cn) for q in quotes]
+        return {"results": results, "compare": compare(results, quotes, shipment.settings.daily_profit_cny)}
+
+    def check_bill(self, body: dict) -> dict:
+        shipment = Shipment.model_validate(body["shipment"])
+        quote = Quote.model_validate(body["quote"])
+        text = str(body.get("text") or "").strip()
+        if not text:
+            raise ValueError("请粘贴账单内容。")
+        bill = quotes_mod.parse_bill_lines(text)
+        cost = 0.0
+        if bill is None:
+            bill, i, o = asyncio.run(quotes_mod.extract_bill(text, self._complete()))
+            cost = round((i * self.config.price_input_per_m + o * self.config.price_output_per_m) / 1_000_000, 4)
+        result = calc(shipment, quote, self.us_hts, self.policy, self.cn)
+        checked = check_bill(result, bill, shipment.settings.usd_cny)
+        rid = self.ledger.add(shipment, quote, result, bill, checked) if body.get("save", True) else 0
+        return dict(checked, record_id=rid, cost_yuan=cost)
 
     def history(self) -> list[dict]:
         jobs = sorted(self.jobs.values(), key=lambda j: -j.created)[:30]
@@ -197,8 +373,20 @@ def make_handler(app: App):
         def _json(self, data, code: int = 200) -> None:
             self._send(code, json.dumps(data, ensure_ascii=False).encode("utf-8"), "application/json; charset=utf-8")
 
+        def _file(self, data: bytes, name: str) -> None:
+            self.send_response(200)
+            self.send_header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+            self.send_header("Content-Disposition", f"attachment; filename=\"result.xlsx\"; filename*=UTF-8''{quote(name)}")
+            self.send_header("Content-Length", str(len(data)))
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            self.wfile.write(data)
+
         def _body(self) -> dict:
             n = int(self.headers.get("Content-Length") or 0)
+            if n > MAX_UPLOAD * 4 // 3 + 4096:
+                self.rfile.read(n)
+                return {"_too_big": True}
             try:
                 return json.loads(self.rfile.read(n) or b"{}")
             except json.JSONDecodeError:
@@ -212,6 +400,31 @@ def make_handler(app: App):
                 return self._json(app.status())
             if path == "/api/jobs":
                 return self._json(app.history())
+            if path == "/api/history":
+                from urllib.parse import parse_qs
+                qs = parse_qs(self.path.split("?", 1)[1]) if "?" in self.path else {}
+                recs = app.history_db.list(qs.get("q", [""])[0].strip(), qs.get("status", [""])[0], 200)
+                return self._json({"records": [r.public() for r in recs], "counts": app.history_db.counts()})
+            if path == "/api/landed/status":
+                return self._json(app.landed_status())
+            if path == "/api/landed/lookup":
+                from urllib.parse import parse_qs
+                qs = parse_qs(self.path.split("?", 1)[1]) if "?" in self.path else {}
+                return self._json(app.lookup(qs.get("code", [""])[0]))
+            if path == "/api/landed/records":
+                return self._json({"records": app.ledger.list(), "count": app.ledger.count()})
+            if path == "/api/quotes/template":
+                return self._file(quotes_mod.template_excel(), "货代报价模板.xlsx")
+            if path == "/api/batch/template":
+                return self._file(template_excel(), "商品清单模板.xlsx")
+            if path.startswith("/api/batch/"):
+                parts = path.split("/")
+                job = app.batches.get(parts[3]) if len(parts) > 3 else None
+                if not job:
+                    return self._json({"error": "not found"}, 404)
+                if len(parts) > 4 and parts[4] == "download":
+                    return self._file(job.batch.to_excel(), f"{Path(job.filename).stem}-归类结果.xlsx")
+                return self._json(job.public())
             if path.startswith("/api/jobs/"):
                 job = app.jobs.get(path.rsplit("/", 1)[-1])
                 return self._json(job.public()) if job else self._json({"error": "not found"}, 404)
@@ -224,8 +437,47 @@ def make_handler(app: App):
                 desc = str(body.get("description", "")).strip()
                 if not desc:
                     return self._json({"error": "请填写商品描述"}, 400)
-                job = app.start(desc[:2000], bool(body.get("allow_ask", True)))
+                job = app.start(desc[:2000], bool(body.get("allow_ask", True)), bool(body.get("fresh", False)))
                 return self._json({"id": job.id})
+            if path.startswith("/api/history/") and path.rsplit("/", 1)[-1] in ("confirm", "correct"):
+                parts = path.split("/")
+                try:
+                    out = app.review(int(parts[3]), parts[4], str(body.get("code", "")), str(body.get("note", ""))[:500])
+                except (HistoryError, ValueError) as e:
+                    return self._json({"error": str(e)}, 400)
+                return self._json(out)
+            landed = {"/api/quotes/extract": app.extract_quotes, "/api/landed/calc": app.calc_landed,
+                      "/api/landed/bill": app.check_bill}
+            if path in landed:
+                if body.get("_too_big"):
+                    return self._json({"error": "文件太大了（上限 8MB）。"}, 400)
+                try:
+                    return self._json(landed[path](body))
+                except (quotes_mod.QuoteError, ValueError, KeyError, TypeError) as e:
+                    msg = str(e)
+                    if isinstance(e, ValidationError):
+                        msg = "填写的内容有误：" + "；".join(f"{'.'.join(map(str, x['loc']))} {x['msg']}" for x in e.errors()[:5])
+                    return self._json({"error": msg or type(e).__name__}, 400)
+                except Exception as e:  # 大模型接口出错等
+                    return self._json({"error": f"{type(e).__name__}: {e}"}, 500)
+            if path == "/api/batch":
+                if body.get("_too_big"):
+                    return self._json({"error": "文件太大了（上限 8MB），请分成几个文件。"}, 400)
+                try:
+                    data = base64.b64decode(str(body.get("data", "")), validate=True)
+                except ValueError:
+                    return self._json({"error": "文件内容读取失败，请重新选择文件。"}, 400)
+                try:
+                    job = app.start_batch(str(body.get("filename", "清单.xlsx")), data)
+                except BatchError as e:
+                    return self._json({"error": str(e)}, 400)
+                return self._json(job.public())
+            if path.startswith("/api/batch/") and path.endswith("/cancel"):
+                job = app.batches.get(path.split("/")[3])
+                if not job:
+                    return self._json({"error": "not found"}, 404)
+                job.batch.cancel()
+                return self._json({"ok": True})
             if path.startswith("/api/jobs/") and path.endswith("/answer"):
                 job = app.jobs.get(path.split("/")[3])
                 if not job:

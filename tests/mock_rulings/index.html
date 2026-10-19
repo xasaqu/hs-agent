@@ -1,0 +1,32 @@
+<!doctype html><html><head><meta charset="utf-8"></head><body>
+<h3>归类决定和归类裁定查询</h3>
+<table><tr><td>数据来源：</td><td><select id="src"><option>请选择</option><option>归类决定</option><option>归类裁定</option></select></td>
+<td>数据状态：</td><td><input id="st" data-role="dropdownlist" style="display:none" value="全部"></td></tr></table>
+<button id="q">查询</button>
+<table id="list"></table>
+<div id="pager" data-role="pager"></div>
+<div id="modal" style="display:none;border:1px solid #000"><div id="mbody"></div><button onclick="document.getElementById('modal').style.display='none'">关闭</button></div>
+<script>
+const DATA = {
+ "归类决定": [["J2025-0002","血糖试纸","38221900","无"],["J2025-0001","冷冻罗非鱼鱼皮","03039900","散装"],["J2021-0009","旧决定","85166090","无"]],
+ "归类裁定": [["Z2025-0005","沉香木片","12119050","散装"]]};
+let rows=[], pageNo=0;
+function render(){
+  const t=document.getElementById('list'); t.innerHTML='<tr><th>相关编号</th><th>中文名称</th><th>决定税号</th><th>规格型号</th><th>查看更多</th></tr>';
+  rows.slice(pageNo*2,pageNo*2+2).forEach(r=>{const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td><td><button>详细</button></td>`;
+    tr.querySelector('button').onclick=()=>{document.getElementById('mbody').innerText=`相关编号：${r[0]}\n中文名称：${r[1]}\n商品描述：${r[1]}的详细描述，用于测试。\n决定税号：${r[2]}\n归类理由：根据归类总规则一及六归入税号${r[2]}。`;document.getElementById('modal').style.display='block';};
+    t.appendChild(tr);});
+  const total=Math.max(1,Math.ceil(rows.length/2));
+  document.getElementById('pager').innerHTML = `${pageNo+1} 转到第<input size="3">页 共 ${total} 页 2 条每页`;
+}
+document.getElementById('q').onclick=()=>{if(document.getElementById('st').value!=='生效中'){rows=[];render();return;} const v=document.getElementById('src').value; rows= v==="请选择" ? DATA["归类决定"].concat(DATA["归类裁定"]) : DATA[v];pageNo=0;render();};
+
+// 极简的 jQuery/Kendo 替身：只实现脚本用到的接口
+const st=document.getElementById('st');
+st.__w={kendoDropDownList:{options:{dataTextField:'text',optionLabel:null},dataSource:{data:()=>[{text:'全部'},{text:'生效中'}]},
+  select(i){st.value=['全部','生效中'][i];}, trigger(){}}};
+const pg=document.getElementById('pager');
+pg.__w={kendoPager:{dataSource:{totalPages:()=>Math.max(1,Math.ceil(rows.length/2)), page(n){pageNo=n-1;render();}}}};
+window.jQuery=(el)=>({data:(k)=>el.__w&&el.__w[k]});
+</script></body></html>

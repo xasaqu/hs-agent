@@ -8,6 +8,7 @@
   python -m eval.run_eval                                # 种子集，三种方式都跑
   python -m eval.run_eval --modes agent --limit 10       # 只跑 Agent 的前 10 条
   python -m eval.run_eval --cases eval/cross_cases.json  # 用官方裁定案例（先运行 eval.fetch_cross）
+  python -m eval.run_eval --modes agent --repeat 3       # 每题跑 3 次，看平均准确率和波动
 结果写到 agent_data/eval/<时间>/：results.csv 是明细，summary.md 是汇总。
 """
 
@@ -121,8 +122,34 @@ def summarize(rows: list[dict], model: str, cases_file: str, threshold: float) -
     return "\n".join(lines) + "\n"
 
 
+def summarize_repeats(rows: list[dict], repeat: int) -> str:
+    """多次运行时：每轮的 6 位准确率、平均值和波动，以及每题答对几次。"""
+    lines = ["", f"## 重复运行（每题 {repeat} 次）", ""]
+    for mode in [m for m in MODES if any(r["mode"] == m for r in rows)]:
+        rs = [r for r in rows if r["mode"] == mode]
+        per_round = [sum(r["acc6"] for r in rs if r["round"] == k) / max(1, sum(1 for r in rs if r["round"] == k))
+                     for k in range(1, repeat + 1)]
+        mean = sum(per_round) / len(per_round)
+        lines.append(f"- {MODE_NAMES[mode]}：每轮 6 位准确率 " + "、".join(f"{x:.0%}" for x in per_round)
+                     + f"；平均 **{mean:.1%}**，最高最低差 {max(per_round) - min(per_round):.0%}")
+        hits: dict[str, list[int]] = {}
+        for r in rs:
+            hits.setdefault(r["case_id"], []).append(r["acc6"])
+        counts = [sum(v) for v in hits.values()]
+        lines.append(f"  - 每次都对 {counts.count(repeat)} 题，有时对 {sum(1 for c in counts if 0 < c < repeat)} 题，"
+                     f"每次都错 {counts.count(0)} 题")
+        unstable = sorted((cid for cid, v in hits.items() if 0 < sum(v) < repeat))
+        never = sorted(cid for cid, v in hits.items() if sum(v) == 0)
+        if never:
+            lines.append("  - 每次都错：" + "、".join(never))
+        if unstable:
+            lines.append("  - 时对时错：" + "、".join(f"{c}（{sum(hits[c])}/{repeat}）" for c in unstable))
+    return "\n".join(lines) + "\n"
+
+
 async def main_async(args) -> None:
     config = Config()
+    config.history_enabled = False  # 评测不能沿用记录库里的结果，也不往里写
     if not config.llm_api_key:
         raise SystemExit("缺少大模型 API Key：请在 .env 里设置 LLM_API_KEY（或 DEEPSEEK_API_KEY）。")
     cases = json.loads(Path(args.cases).read_text(encoding="utf-8"))["cases"]
@@ -135,17 +162,22 @@ async def main_async(args) -> None:
     sem = asyncio.Semaphore(args.concurrency)
     done = 0
 
-    async def guarded(mode: str, case: dict) -> dict:
+    repeat = max(1, args.repeat)
+    total = len(cases) * len(modes) * repeat
+
+    async def guarded(mode: str, case: dict, round_no: int) -> dict:
         nonlocal done
         async with sem:
             row = await run_one(mode, case, config, completer)
+        row["round"] = round_no
         done += 1
         mark = "✓" if row["acc6"] else "✗"
-        print(f"[{done}/{len(cases) * len(modes)}] {mark} {mode:6} {case['id']}: 期望 {fmt_code(row['expected'])}，"
+        tag = f" 第{round_no}轮" if repeat > 1 else ""
+        print(f"[{done}/{total}]{tag} {mark} {mode:6} {case['id']}: 期望 {fmt_code(row['expected'])}，"
               f"得到 {fmt_code(row['got']) if row['got'] else '无'} {row['error']}", flush=True)
         return row
 
-    rows = await asyncio.gather(*(guarded(m, c) for c in cases for m in modes))
+    rows = await asyncio.gather(*(guarded(m, c, k) for k in range(1, repeat + 1) for c in cases for m in modes))
 
     out_dir = config.data_dir / "eval" / time.strftime("%Y%m%d-%H%M%S")
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -155,6 +187,8 @@ async def main_async(args) -> None:
         writer.writeheader()
         writer.writerows(rows)
     summary = summarize(rows, config.llm_model, Path(args.cases).name, config.review_threshold)
+    if repeat > 1:
+        summary = summary.replace("（模型", f"（{repeat} 轮合计，模型", 1) + summarize_repeats(rows, repeat)
     (out_dir / "summary.md").write_text(summary, encoding="utf-8")
     print("\n" + summary)
     print(f"明细：{out_dir / 'results.csv'}")
@@ -167,6 +201,7 @@ def main() -> None:
     p.add_argument("--only", default="", help="只跑指定商品，逗号分隔")
     p.add_argument("--limit", type=int, default=0)
     p.add_argument("--concurrency", type=int, default=4)
+    p.add_argument("--repeat", type=int, default=1, help="每题跑几次（大模型每次结果有波动，多跑几次看平均）")
     asyncio.run(main_async(p.parse_args()))
 
 

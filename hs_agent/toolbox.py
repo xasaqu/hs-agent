@@ -73,7 +73,9 @@ class RunState:
     notes_shown: set[str] = field(default_factory=set)  # 已经给 Agent 看过类注、章注的章
 
 
-NOTES_LIMIT = 4000  # 每段注释最多给模型看多少字，太长会挤占上下文
+# 每段注释最多给模型看多少字。类注、章注里的排除条款和子目注释常在后半段，截短会直接导致归错
+# （评测里第 39 章章注 1.5 万字只给了 4000 字，「本章不包括第九十章的物品」就被截掉了），所以给得足够长。
+NOTES_LIMIT = 20000
 
 
 def _clip(text: str, n: int) -> str:
@@ -160,14 +162,18 @@ class Toolbox:
         parts = [f"\n【海关官方注释，来源：{source}】"]
         if chapter not in self.s.notes_shown:
             self.s.notes_shown.add(chapter)
-            if notes.section_notes:
+            section_key = "类注:" + notes.section_notes[:200]  # 同一类的几章共用类注，只给一次
+            if notes.section_notes and section_key not in self.s.notes_shown:
+                self.s.notes_shown.add(section_key)
                 parts.append("类注：\n" + _clip(notes.section_notes, NOTES_LIMIT))
+            elif notes.section_notes:
+                parts.append("（本类的类注前面已经给过。）")
             if notes.chapter_notes:
                 parts.append("章注：\n" + _clip(notes.chapter_notes, NOTES_LIMIT))
         elif chapter_only:
             parts.append("（本章的类注、章注前面已经给过。）")
         if not chapter_only and notes.heading_notes:
-            parts.append(f"品目 {heading} 注释：\n" + _clip(notes.heading_notes, NOTES_LIMIT * 2))
+            parts.append(f"品目 {heading} 注释：\n" + _clip(notes.heading_notes, NOTES_LIMIT))
         return "\n".join(parts)
 
     def cn_codes(self, hs6: str, log: bool = True) -> str:

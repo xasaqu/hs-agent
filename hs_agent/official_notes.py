@@ -16,8 +16,10 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import atexit
 import json
 import re
+import threading
 import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -131,6 +133,8 @@ class NotesFetcher:
                 from playwright.async_api import async_playwright
             except ImportError as e:
                 raise NotesError("没有安装 Playwright：pip install playwright && playwright install chromium") from e
+        if stealth and self._headless and self.config.notes_window_fallback:
+            self._headless = False  # 无窗口模式基本过不了校验，patchright 直接用窗口模式（窗口放在屏幕外）
         if not self._pw:
             self._pw = await async_playwright().start()
         profile = self.config.data_dir / "browser_profile"
@@ -186,7 +190,7 @@ class NotesFetcher:
             try:
                 return await self._fetch_once(heading)
             except BlankPage:
-                if not self._headless:
+                if not self._headless or not self.config.notes_window_fallback:
                     raise NotesError(
                         f"网站的反爬虫校验没有通过，页面一直是空白（浏览器：{self.browser_name}）。"
                         + self._hint()
@@ -220,18 +224,16 @@ class NotesFetcher:
             await self._dump(context, heading)
             raise NotesError(f"{type(e).__name__}: {str(e).splitlines()[0] if str(e) else ''}") from e
         finally:
-            for p in list(context.pages):
-                if p is not page and p.url == "about:blank":
-                    continue
+            for p in list(context.pages)[1:]:  # 只留浏览器启动时自带的第一个标签页
                 try:
                     await p.close()
                 except Exception:
                     pass
 
-    async def _open(self, page) -> None:
+    async def _open(self, page, url: str = "") -> None:
         """打开查询页。反爬虫脚本会先放一个空白页，设置好 Cookie 后自动刷新，这里等它刷新出真正的内容。"""
         self.last_status = None
-        resp = await page.goto(self.config.notes_url, wait_until="domcontentloaded")
+        resp = await page.goto(url or self.config.notes_url, wait_until="domcontentloaded")
         self.last_status = resp.status if resp else None
         deadline = time.time() + self.config.notes_timeout_ms / 1000
         while time.time() < deadline:
@@ -334,6 +336,64 @@ class NotesFetcher:
                 pass
 
 
+class SharedFetcher:
+    """整个程序共用一个浏览器，放在单独的线程里运行。
+
+    同时归类多个商品（网页界面、评测并发）时，如果各自启动 Chrome，会争用同一个浏览器资料目录，
+    多出一堆空白标签页，查询也会失败。所以所有查询都交给这一个线程排队执行。
+    连续失败几次后暂停在线查询一段时间，避免每个品目都白等。
+    """
+
+    _instance: "SharedFetcher | None" = None
+    _guard = threading.Lock()
+    FAIL_LIMIT = 2
+    PAUSE_S = 600
+
+    def __init__(self, config: Config):
+        self.fetcher = NotesFetcher(config)
+        self.loop = asyncio.new_event_loop()
+        self.thread = threading.Thread(target=self.loop.run_forever, daemon=True, name="notes-browser")
+        self.thread.start()
+        self.failures = 0
+        self.paused_until = 0.0
+        self.last_error = ""
+        atexit.register(self.shutdown)
+
+    @classmethod
+    def get(cls, config: Config) -> "SharedFetcher":
+        with cls._guard:
+            if cls._instance is None:
+                cls._instance = cls(config)
+            return cls._instance
+
+    async def fetch(self, heading: str) -> OfficialNotes:
+        if time.time() < self.paused_until:
+            raise NotesError(f"在线查询暂停中（刚才连续失败：{self.last_error}）")
+        future = asyncio.run_coroutine_threadsafe(self.fetcher.fetch(heading), self.loop)
+        try:
+            notes = await asyncio.wrap_future(future)
+        except NotesError as e:
+            self.failures += 1
+            self.last_error = str(e)
+            if self.failures >= self.FAIL_LIMIT:
+                self.paused_until = time.time() + self.PAUSE_S
+                self.failures = 0
+            raise
+        self.failures = 0
+        return notes
+
+    async def close(self) -> None:
+        pass  # 共用的浏览器在程序退出时才关
+
+    def shutdown(self) -> None:
+        if self.loop.is_running():
+            try:
+                asyncio.run_coroutine_threadsafe(self.fetcher.close(), self.loop).result(timeout=10)
+            except Exception:
+                pass
+            self.loop.call_soon_threadsafe(self.loop.stop)
+
+
 class OfficialNotesService:
     """先查缓存（含手动导入的注释），过期或没有才在线查询；在线查询失败时退回使用过期缓存。
 
@@ -344,7 +404,7 @@ class OfficialNotesService:
         self.config = config
         self.cache = NotesCache(config.data_dir / "notes_cache", config.notes_ttl_days)
         self.offline = not config.notes_online and fetcher is None
-        self.fetcher = fetcher or (None if self.offline else NotesFetcher(config))
+        self.fetcher = fetcher or (None if self.offline else SharedFetcher.get(config))
         self.disabled_reason = "没有开启在线查询，本地也没有这个品目的注释" if self.offline else ""
 
     @staticmethod

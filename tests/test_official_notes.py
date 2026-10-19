@@ -113,6 +113,7 @@ def browser_config(tmp_path, url):
     cfg.notes_url = url
     cfg.notes_timeout_ms = 8000
     cfg.notes_interval_s = 0
+    cfg.notes_headless, cfg.notes_window_fallback = True, False  # 测试环境没有显示器
     if Path(CONTAINER_CHROME).exists():
         cfg.browser_path = CONTAINER_CHROME
     elif not shutil.which("chromium"):
@@ -173,3 +174,56 @@ def test_manual_import_never_expires(tmp_path):
     got, src = asyncio.run(svc.get_chapter("85", "8501"))
     assert got.heading == "8516" and src == "手动导入的官方注释"
     assert asyncio.run(svc.get("8509")) == (None, "没有开启在线查询，本地也没有这个品目的注释")
+
+
+def test_shared_fetcher_serializes_and_pauses(tmp_path, monkeypatch):
+    from hs_agent.official_notes import SharedFetcher
+    cfg = Config()
+    cfg.data_dir = tmp_path
+    shared = SharedFetcher(cfg)
+    active, peak = [0], [0]
+
+    class Slow:
+        fail = False
+
+        async def fetch(self, heading):
+            active[0] += 1
+            peak[0] = max(peak[0], active[0])
+            await asyncio.sleep(0.05)
+            active[0] -= 1
+            if self.fail:
+                raise NotesError("400")
+            return notes(heading)
+
+        async def close(self):
+            pass
+
+    slow = Slow()
+    shared.fetcher.fetch = slow.fetch  # 换成假的，不启动浏览器
+    shared.fetcher._lock = None
+
+    async def guarded(h):  # NotesFetcher.fetch 自带锁；这里模拟同样的排队
+        return await shared.fetch(h)
+
+    lock = asyncio.Lock()
+    orig = slow.fetch
+
+    async def locked(h):
+        async with lock:
+            return await orig(h)
+
+    shared.fetcher.fetch = locked
+    # 两个线程各自的事件循环同时查询
+    out = []
+    ts = [threading.Thread(target=lambda h=h: out.append(asyncio.run(guarded(h)).heading)) for h in ("8516", "8509", "8418")]
+    [t.start() for t in ts]
+    [t.join() for t in ts]
+    assert sorted(out) == ["8418", "8509", "8516"] and peak[0] == 1
+
+    slow.fail = True
+    for _ in range(2):
+        with pytest.raises(NotesError, match="400"):
+            asyncio.run(shared.fetch("8516"))
+    with pytest.raises(NotesError, match="暂停"):
+        asyncio.run(shared.fetch("8516"))
+    shared.shutdown()

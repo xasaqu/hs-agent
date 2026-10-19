@@ -41,13 +41,22 @@ class Config:
     notes_dir: Path = field(default_factory=lambda: Path(_env("NOTES_DIR") or str(DATA_DIR / "notes")))
     cn_file: Path = field(default_factory=lambda: Path(_env("CN_TARIFF_FILE") or str(DATA_DIR / "cn_tariff.csv")))
 
+    # 美国进口税则（python -m hs_agent.us_hts --download 下载）、附加税政策、9903.05.31 豁免清单
+    us_hts_file: Path = field(default_factory=lambda: Path(_env("US_HTS_FILE") or str(DATA_DIR / "us_hts.json")))
+    us_policy_file: Path = field(default_factory=lambda: Path(_env("US_POLICY_FILE") or str(DATA_DIR / "us_policy.json")))
+    us_301_file: Path = field(default_factory=lambda: Path(_env("US_301_FILE") or str(DATA_DIR / "us_301_lists.csv")))
+    us_exempt_file: Path = field(default_factory=lambda: Path(_env("US_EXEMPT_FILE") or str(DATA_DIR / "us_exempt_9903_05_31.csv")))
+
     # 在线查询海关「进出口税则商品及品目注释」（需要安装 Playwright），查到的结果缓存在本地
     notes_online: bool = field(default_factory=lambda: _env("NOTES_ONLINE", "1") == "1")
     notes_url: str = field(default_factory=lambda: _env(
         "NOTES_URL", "http://www.customs.gov.cn/customs/302427/302442/jckszspjpmzscx/index.html"))
     notes_ttl_days: float = field(default_factory=lambda: float(_env("NOTES_TTL_DAYS", "15")))
     notes_headless: bool = field(default_factory=lambda: _env("NOTES_HEADLESS", "1") == "1")
+    # 无窗口模式过不了网站校验时，改用屏幕外的窗口模式；没有显示器的服务器上设为 0
+    notes_window_fallback: bool = field(default_factory=lambda: _env("NOTES_WINDOW_FALLBACK", "1") == "1")
     notes_interval_s: float = field(default_factory=lambda: float(_env("NOTES_INTERVAL_S", "5")))
+    batch_concurrency: int = field(default_factory=lambda: int(_env("BATCH_CONCURRENCY", "2")))  # 批量归类同时跑几行
     notes_timeout_ms: int = field(default_factory=lambda: int(_env("NOTES_TIMEOUT_MS", "20000")))
     # 本机 Chrome 路径，留空则用 Playwright 自带的浏览器
     browser_path: str = field(default_factory=lambda: _env("BROWSER_PATH", ""))
@@ -57,6 +66,8 @@ class Config:
     # 置信度低于这个值，结果标记为「建议人工复核」
     review_threshold: float = field(default_factory=lambda: float(_env("REVIEW_THRESHOLD", "0.7")))
     data_dir: Path = field(default_factory=lambda: Path(_env("AGENT_DATA_DIR", "agent_data")))
+    # 归类记录库：相同商品沿用以前的结果，人工确认/修正过的记录作为判例给 Agent 参考（评测时会关掉）
+    history_enabled: bool = field(default_factory=lambda: _env("HISTORY", "1") == "1")
 
     # 模型价格（元 / 百万 token），用于估算成本。请按官方最新价格修改。
     price_input_per_m: float = field(default_factory=lambda: float(_env("PRICE_INPUT_PER_M", "2")))

@@ -104,10 +104,66 @@
   .hist .d { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .hist .c { font-family: var(--mono); color: var(--muted); font-size: 12px; }
   .status { font-size: 12px; color: var(--muted); line-height: 1.8; }
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); }
+  .tabs button { background: transparent; border: 0; border-bottom: 2px solid transparent; padding: 8px 14px; font: inherit; color: var(--muted); cursor: pointer; }
+  .tabs button.on { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
+  .drop { border: 1.5px dashed var(--line); border-radius: 10px; padding: 22px; text-align: center; color: var(--muted); cursor: pointer; }
+  .drop.over { border-color: var(--accent); background: var(--accent-soft); }
+  .drop b { color: var(--text); }
+  a.link { color: var(--accent); text-decoration: none; font-size: 14px; }
+  .prog { height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; }
+  .prog i { display: block; height: 100%; background: var(--accent); transition: width .3s; }
+  .counts { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+  .counts b { color: var(--text); }
+  .tbl-wrap { max-height: 420px; overflow: auto; border: 1px solid var(--line); border-radius: 10px; }
+  table.rows { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.rows th, table.rows td { text-align: left; padding: 6px 10px; border-top: 1px solid var(--line); vertical-align: top; }
+  table.rows th { position: sticky; top: 0; background: var(--panel); border-top: 0; color: var(--muted); font-weight: 600; }
+  table.rows td.mono { font-family: var(--mono); white-space: nowrap; }
+  tr.r-review td { background: var(--warn-soft); } tr.r-error td, tr.r-skipped td { background: var(--bad-soft); }
+  .st { white-space: nowrap; color: var(--muted); }
+  .reviewbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: var(--bg); border-radius: 10px; padding: 10px 12px; font-size: 14px; }
+  .reviewbar .grow { flex: 1; }
+  .fixform { display: grid; grid-template-columns: 200px 1fr auto; gap: 8px; width: 100%; }
+  @media (max-width: 600px) { .fixform { grid-template-columns: 1fr; } }
+  .b-info { background: var(--accent-soft); color: var(--accent); }
+  .filters { display: flex; gap: 8px; flex-wrap: wrap; }
+  .filters input { flex: 1; min-width: 160px; }
+  select { padding: 8px 10px; font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; }
+  button.mini { background: transparent; border: 1px solid var(--line); color: var(--text); border-radius: 8px; padding: 2px 8px; font: inherit; font-size: 12px; cursor: pointer; white-space: nowrap; }
+  td.act { white-space: nowrap; }
+  body:not([data-tab=batch]) [data-pane=batch], body:not([data-tab=records]) [data-pane=records],
+  body:not([data-tab=landed]) [data-pane=landed], body:not([data-tab=single]) [data-pane=single] { display: none !important; }
+  body[data-tab=landed] .wrap { grid-template-columns: 1fr; max-width: 1240px; }
+  body[data-tab=landed] aside { display: none; }
+  .fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px 10px; }
+  .fields label { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--muted); }
+  .fields input, .fields select, table.edit input, table.edit select { width: 100%; padding: 6px 8px; font: inherit; font-size: 14px; color: var(--text);
+    background: var(--bg); border: 1px solid var(--line); border-radius: 8px; outline: none; min-width: 0; }
+  .fields input:focus, table.edit input:focus { border-color: var(--accent); }
+  .fields label.chk { flex-direction: row; align-items: center; gap: 6px; font-size: 13px; padding-top: 18px; }
+  .fields label.chk input { width: auto; }
+  .card { border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+  .card + .card { margin-top: 10px; }
+  .card-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-weight: 600; font-size: 14px; }
+  .card-head .grow { flex: 1; }
+  table.edit { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
+  table.edit th { text-align: left; color: var(--muted); font-weight: 600; font-size: 12px; padding: 2px 4px; }
+  table.edit td { padding: 2px 4px; }
+  table.edit td.c { text-align: center; }
+  .us-list { margin-top: 8px; max-height: 260px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; }
+  .us-list div { padding: 6px 10px; font-size: 13px; border-top: 1px solid var(--line); cursor: pointer; }
+  .us-list div:first-child { border-top: 0; }
+  .us-list div:hover { background: var(--accent-soft); }
+  .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .flag-warn { color: var(--warn); } .flag-info { color: var(--muted); } .flag-error { color: var(--bad); }
+  ul.flags { margin: 4px 0 0; padding-left: 18px; font-size: 13px; }
+  tr.pick { cursor: pointer; } tr.pick.on td { background: var(--accent-soft); }
+  .scroll-x { overflow-x: auto; }
   [hidden] { display: none !important; }
 </style>
 </head>
-<body>
+<body data-tab="single">
 <div class="wrap">
   <header>
     <h1>HS 归类助手</h1>
@@ -117,18 +173,105 @@
   <main class="stack">
     <div id="banner" class="banner" hidden></div>
 
-    <section class="panel">
+    <nav class="tabs">
+      <button class="on" data-tab="single">单个商品</button>
+      <button data-tab="batch">批量（Excel 清单）</button>
+      <button data-tab="records">记录库</button>
+      <button data-tab="landed">头程成本</button>
+    </nav>
+
+    <section class="panel" data-pane="landed">
+      <div class="hint" style="margin-top:0">美国 FBA 头程：填货物和报价，算出每件到仓成本（常态和偏坏两个数），并逐项对比多家报价。只覆盖海派、空派的自主清关和包税；亚马逊侧费用（卡派、入库配置费等）作为报价里的费用项填写。</div>
+      <div class="note" id="lStatus"></div>
+    </section>
+
+    <section class="panel" data-pane="landed">
+      <h2>货物</h2>
+      <div id="lProducts"></div>
+      <div class="row"><button class="ghost" id="lAddProduct">添加商品</button></div>
+    </section>
+
+    <section class="panel" data-pane="landed">
+      <h2>设置</h2>
+      <div class="fields" id="lSettings"></div>
+      <div class="hint">风险项每行一个：名称 概率% 损失金额（元），例如「查验 5% 3000」。按「概率 × 损失」计入成本。</div>
+      <textarea id="lRisks" style="min-height:60px" placeholder="查验 5% 3000"></textarea>
+    </section>
+
+    <section class="panel" data-pane="landed">
+      <h2>报价</h2>
+      <div class="hint" style="margin-top:0">上传货代发的报价单（Excel、CSV、文字），或者直接粘贴报价内容，由大模型拆成统一的费用项；按模板填好的 Excel 不用大模型。识别后请逐项核对。</div>
+      <textarea id="lQuoteText" style="min-height:80px" placeholder="粘贴报价内容，例如：美森海派 美西 21kg+ 9.5元/kg，报关 150/票，清关 100USD/票，卡派 260/方 最低 800……"></textarea>
+      <div class="row">
+        <button class="ghost" id="lQuoteFileBtn">上传报价文件</button>
+        <input type="file" id="lQuoteFile" accept=".xlsx,.xlsm,.csv,.txt" hidden>
+        <a class="link" href="/api/quotes/template">下载报价模板</a>
+        <span class="grow"></span>
+        <button class="ghost" id="lAddQuote">手动添加报价</button>
+        <button class="primary" id="lExtract">识别粘贴的报价</button>
+      </div>
+      <div id="lQuotes" style="margin-top:12px"></div>
+    </section>
+
+    <section class="panel" data-pane="landed">
+      <div class="row" style="margin-top:0"><span class="grow note" id="lCalcNote"></span><button class="primary" id="lCalc">计算落地成本</button></div>
+      <div id="lResult"></div>
+    </section>
+
+    <section class="panel" data-pane="landed">
+      <h2>账单核对</h2>
+      <div class="hint" style="margin-top:0">货到之后，把货代的实际账单贴进来，和报价逐类对比。每次核对都会保存，攒够 30~50 票就能看出各家报价和实付差在哪里。简单的「费用名称 金额 [USD]」每行一条不用大模型。</div>
+      <div class="row" style="margin-top:0"><label class="toggle">对应的报价 <select id="lBillQuote"></select></label></div>
+      <textarea id="lBillText" style="min-height:90px;margin-top:8px" placeholder="海运费 16200&#10;报关费 150&#10;清关费 USD 100&#10;查验费 USD 300"></textarea>
+      <div class="row"><span class="grow"></span><button class="primary" id="lBillGo">核对并保存</button></div>
+      <div id="lBillResult"></div>
+      <h3 style="margin-top:16px">已保存的核对记录</h3>
+      <div id="lRecords" class="note"></div>
+    </section>
+
+    <section class="panel" data-pane="batch">
+      <div class="drop" id="drop">
+        <div><b>点击选择</b>或把商品清单拖到这里</div>
+        <div class="hint" style="margin-bottom:0">支持 .xlsx 和 .csv，第一行是表头，每行一个商品，一次最多 500 行</div>
+        <input type="file" id="file" accept=".xlsx,.xlsm,.csv" hidden>
+      </div>
+      <div class="hint">会自动识别「商品名称、规格型号、材质、用途、商品描述」等列；序号、数量、金额这类列会跳过。
+        如果清单里已有 HS 编码列，它不会给 Agent 看，只用来和结果对比。批量时不追问，信息不足的会标记「需人工复核」。</div>
+      <div class="row">
+        <a class="link" href="/api/batch/template">下载清单模板</a>
+        <span class="grow"></span>
+        <span class="note" id="fileName"></span>
+        <button class="primary" id="batchGo" disabled>开始批量归类</button>
+      </div>
+    </section>
+
+    <section class="panel" id="batchBox" data-pane="batch" hidden>
+      <h2><span class="spinner" id="bSpin"></span><span id="bTitle">批量归类</span></h2>
+      <div class="stack">
+        <div class="prog"><i id="bBar" style="width:0"></i></div>
+        <div class="counts" id="bCounts"></div>
+        <div class="row" style="margin-top:4px">
+          <button class="primary" id="bDown">下载结果 Excel</button>
+          <button class="ghost" id="bStop">停止</button>
+          <span class="note" id="bCols"></span>
+        </div>
+        <div class="tbl-wrap"><table class="rows"><thead><tr><th>行</th><th>商品</th><th>建议编码</th><th>状态</th></tr></thead><tbody id="bRows"></tbody></table></div>
+      </div>
+    </section>
+
+    <section class="panel" data-pane="single">
       <textarea id="desc" placeholder="例如：家用电热空气炸锅，5L，塑料外壳，额定功率 1500W，靠电热管和风扇循环热风烹饪"></textarea>
       <div class="hint">写清楚：商品名称、材质及占比、用途、工作原理（是否电动、电热）、是否成套销售。越具体越准。</div>
       <div class="chips" id="examples"></div>
       <div class="row">
         <label class="toggle"><input type="checkbox" id="allowAsk" checked> 信息不够时允许追问</label>
+        <label class="toggle" title="记录库里有相同的商品时，默认直接沿用以前的结果"><input type="checkbox" id="fresh"> 不用历史记录，重新归类</label>
         <span class="grow"></span>
         <button class="primary" id="go">开始归类</button>
       </div>
     </section>
 
-    <section class="panel ask" id="askBox" hidden>
+    <section data-pane="single" class="panel ask" id="askBox" hidden>
       <h2>需要补充信息</h2>
       <div class="q" id="askQ"></div>
       <input type="text" id="askA" placeholder="直接输入回答，回车提交">
@@ -138,11 +281,23 @@
       </div>
     </section>
 
-    <section class="panel" id="resultBox" hidden></section>
+    <section data-pane="single" class="panel" id="resultBox" hidden></section>
 
-    <section class="panel" id="progressBox" hidden>
+    <section data-pane="single" class="panel" id="progressBox" hidden>
       <h2><span class="spinner" id="spin"></span><span id="progTitle">归类过程</span></h2>
       <ol class="timeline" id="timeline"></ol>
+    </section>
+    <section class="panel" data-pane="records">
+      <div class="hint" style="margin-top:0">每次归类都会存在这里。描述相同的商品会直接沿用；你确认或修正过的记录会作为「判例」，归类相似商品时先给 Agent 参考。</div>
+      <div class="filters">
+        <input type="text" id="recQ" placeholder="搜索商品或编码">
+        <select id="recStatus">
+          <option value="">全部</option><option value="review">待复核</option>
+          <option value="agent">未确认</option><option value="confirmed">人工确认</option><option value="corrected">人工修正</option>
+        </select>
+      </div>
+      <div class="counts" id="recCounts" style="margin:12px 0"></div>
+      <div class="tbl-wrap" style="max-height:640px"><table class="rows"><thead><tr><th>#</th><th>商品</th><th>编码</th><th>状态</th><th></th></tr></thead><tbody id="recRows"></tbody></table></div>
     </section>
   </main>
 
@@ -184,7 +339,8 @@ async function loadStatus() {
   const s = await api("/api/status");
   $("status").innerHTML =
     `模型：${esc(s.model)}<br>HS 2022 子目：${s.hs_count} 个<br>` +
-    `中国 10 位编码：${s.cn_count ? s.cn_count + " 条" : "未导入"}<br>类注、章注：${s.notes ? s.notes + " 个文件" : "未补充"}`;
+    `中国 10 位编码：${s.cn_count ? s.cn_count + " 条" : "未导入"}<br>类注、章注：${s.notes ? s.notes + " 个文件" : "未补充"}` +
+    (s.history ? `<br>记录库：${s.history.total} 条（人工确认 ${s.history.confirmed}，修正 ${s.history.corrected}）` : "");
   if (!s.api_key) {
     $("banner").hidden = false;
     $("banner").textContent = "还没有配置大模型 API Key：在项目文件夹的 .env 里填写 LLM_API_KEY，然后重新启动。";
@@ -195,7 +351,7 @@ async function start() {
   const description = $("desc").value.trim();
   if (!description) { $("desc").focus(); return; }
   $("go").disabled = true;
-  const r = await api("/api/classify", { description, allow_ask: $("allowAsk").checked });
+  const r = await api("/api/classify", { description, allow_ask: $("allowAsk").checked, fresh: $("fresh").checked });
   if (r.error) { $("go").disabled = false; alert(r.error); return; }
   watch(r.id);
 }
@@ -260,13 +416,24 @@ function renderResult(job) {
        ${a.refund_note ? `<div class="banner">${esc(a.refund_note)}</div>` : ""}`
     : `<div class="note">还没有导入中国 10 位编码和退税率，只给出 6 位国际编码。退税率请到国家税务总局「出口退税率查询」核对，导入方法见 README。</div>`;
   const list = (title, items) => items && items.length ? `<div><h3>${title}</h3>${items}</div>` : "";
+  const rec = res.record;
+  const badge = rec ? `<span class="badge b-info">${esc(rec.status_name)}</span>`
+    : `<span class="badge ${a.need_review ? "b-warn" : "b-ok"}">${a.need_review ? "建议人工复核" : "置信度较高"}</span>`;
+  const source = res.reused ? `<div class="banner" style="background:var(--accent-soft);color:var(--accent)">记录库里有相同的商品，沿用了${esc(res.reused)}，没有重新归类。要重新归类，勾选「不用历史记录，重新归类」再提交。</div>`
+    : res.precedents ? `<div class="note">参考了 ${res.precedents} 条人工确认或修正过的相似记录。</div>` : "";
+  const reviewBar = !res.record_id ? "" : rec
+    ? `<div class="reviewbar">已${rec.status === "corrected" ? "修正为 " + esc(rec.code) : "确认"}${rec.note ? "：" + esc(rec.note) : ""}。以后相似的商品会参考这条记录。<span class="grow"></span><button class="mini" id="fixBtn">再修改</button></div>`
+    : `<div class="reviewbar"><span>这个结果对吗？确认或修正后，以后相似的商品会参考这条记录。</span><span class="grow"></span>
+         <button class="mini" id="okBtn">正确</button><button class="mini" id="fixBtn">修正编码</button></div>`;
   box.innerHTML = `
     <div class="stack">
       <div class="code-line">
         <span class="code">${esc(a.hs6_fmt)}</span>
         <button class="ghost" id="copy">复制</button>
-        <span class="badge ${a.need_review ? "b-warn" : "b-ok"}">${a.need_review ? "建议人工复核" : "置信度较高"}</span>
+        <button class="ghost" id="toLanded" title="用这个编码查美国税号、算美国 FBA 头程落地成本">算头程成本</button>
+        ${badge}
       </div>
+      ${source}
       <div class="en">${esc(a.hs6_desc)}</div>
       <div class="meter"><span>置信度</span><span class="bar ${a.need_review ? "low" : ""}"><i style="width:${pct}%"></i></span><b>${pct}%</b></div>
       <div class="path">${a.path_nodes.map((n) => `<span title="${esc(n.desc)}">${esc(n.label)}</span>`).join("")}</div>
@@ -276,10 +443,32 @@ function renderResult(job) {
       ${list("依据", a.rules.length ? `<div class="tags">${a.rules.map((r) => `<span>${esc(r)}</span>`).join("")}</div>` : "")}
       ${list("缺少的信息", a.missing_info.length ? `<ul class="steps">${a.missing_info.map((m) => `<li>${esc(m)}</li>`).join("")}</ul>` : "")}
       ${list("其他可能", a.alternatives.length ? `<ul class="steps">${a.alternatives.map((x) => `<li><span class="tag">${esc(x.code)}</span><span class="note">${esc(x.desc)}</span></li>`).join("")}</ul>` : "")}
+      ${reviewBar}
+      <div class="reviewbar" id="fixForm" hidden><div class="fixform">
+        <input type="text" id="fixCode" placeholder="正确编码，如 8516.60.9000">
+        <input type="text" id="fixNote" placeholder="理由（会作为判例给 Agent 参考）">
+        <button class="primary" id="fixSave">保存</button></div></div>
       <div class="foot">${res.steps} 步 · 追问 ${res.questions} 次 · ${res.seconds} 秒 · 约 ${res.cost_yuan} 元<br>
         结果仅供参考，不构成归类依据，正式结论以海关审核或预裁定为准。</div>
     </div>`;
   $("copy").onclick = () => navigator.clipboard.writeText(a.hs6_fmt).then(() => { $("copy").textContent = "已复制"; });
+  $("toLanded").onclick = () => {
+    const p = L.products[0];
+    p.cn_code = a.cn_fmt || a.hs6_fmt; p.us_hts = ""; p.name = p.name || job.description.slice(0, 30);
+    saveL(); renderProducts();
+    document.querySelector('.tabs button[data-tab=landed]').click();
+    lookupUs(0);
+  };
+  if (!res.record_id) return;
+  const after = (r) => {
+    if (r.error) { alert(r.error); return; }
+    res.answer = r.answer; res.record = r.record; res.reused = "";
+    renderResult(job);
+    loadStatus();
+  };
+  if ($("okBtn")) $("okBtn").onclick = async () => after(await api(`/api/history/${res.record_id}/confirm`, {}));
+  $("fixBtn").onclick = () => { $("fixForm").hidden = false; $("fixCode").value = a.cn_fmt || a.hs6_fmt; $("fixCode").focus(); };
+  $("fixSave").onclick = async () => after(await api(`/api/history/${res.record_id}/correct`, { code: $("fixCode").value, note: $("fixNote").value }));
 }
 
 async function loadHistory() {
@@ -303,6 +492,405 @@ $("desc").addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.metaK
 $("askSend").onclick = () => sendAnswer($("askA").value);
 $("askA").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.isComposing) sendAnswer($("askA").value); });
 $("askSkip").onclick = () => sendAnswer("");
+
+// ---------- 批量 ----------
+let batchId = null, batchTimer = null, upload = null;
+const STATUS = { waiting: "排队中", running: "归类中…", done: "完成", error: "未完成", skipped: "跳过" };
+
+for (const b of document.querySelectorAll(".tabs button")) {
+  b.onclick = () => {
+    for (const x of document.querySelectorAll(".tabs button")) x.classList.toggle("on", x === b);
+    document.body.dataset.tab = b.dataset.tab;
+    if (b.dataset.tab === "records") loadRecords();
+    if (b.dataset.tab === "landed") loadLanded();
+  };
+}
+
+function pickFile(f) {
+  if (!f) return;
+  if (f.size > 8 * 1024 * 1024) { alert("文件太大了（上限 8MB），请分成几个文件。"); return; }
+  upload = f;
+  $("fileName").textContent = f.name;
+  $("batchGo").disabled = false;
+}
+$("drop").onclick = () => $("file").click();
+$("file").onchange = (e) => pickFile(e.target.files[0]);
+$("drop").addEventListener("dragover", (e) => { e.preventDefault(); $("drop").classList.add("over"); });
+$("drop").addEventListener("dragleave", () => $("drop").classList.remove("over"));
+$("drop").addEventListener("drop", (e) => { e.preventDefault(); $("drop").classList.remove("over"); pickFile(e.dataTransfer.files[0]); });
+
+async function startBatch() {
+  if (!upload) return;
+  $("batchGo").disabled = true;
+  const buf = new Uint8Array(await upload.arrayBuffer());
+  let bin = "";
+  for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode.apply(null, buf.subarray(i, i + 0x8000));
+  const r = await api("/api/batch", { filename: upload.name, data: btoa(bin) });
+  if (r.error) { $("batchGo").disabled = false; alert(r.error); return; }
+  batchId = r.id;
+  $("batchBox").hidden = false;
+  renderBatch(r);
+  clearInterval(batchTimer);
+  batchTimer = setInterval(pollBatch, 1500);
+}
+
+async function pollBatch() {
+  const job = await api(`/api/batch/${batchId}`);
+  renderBatch(job);
+  if (job.status !== "running") { clearInterval(batchTimer); $("batchGo").disabled = !upload; }
+}
+
+function renderBatch(job) {
+  const c = job.counts, finished = c.done + c.error + c.skipped;
+  const running = job.status === "running";
+  $("bSpin").hidden = !running;
+  $("bTitle").textContent = running ? `正在归类 ${job.filename}…` :
+    job.status === "cancelled" ? `已停止：${job.filename}` : job.status === "error" ? `出错：${job.error}` : `已完成：${job.filename}`;
+  $("bBar").style.width = `${c.total ? (finished / c.total) * 100 : 0}%`;
+  $("bCounts").innerHTML = `<span>共 <b>${c.total}</b> 行</span><span>完成 <b>${c.done}</b></span>` +
+    `<span>需人工复核 <b>${c.review}</b></span><span>未完成 <b>${c.error + c.skipped}</b></span>` +
+    `<span>用时 <b>${job.seconds}</b> 秒</span><span>费用约 <b>${c.cost_yuan}</b> 元</span>`;
+  $("bCols").textContent = `用来归类的列：${job.columns.join("、")}`;
+  $("bStop").hidden = !running;
+  $("bDown").textContent = running ? "下载已完成部分" : "下载结果 Excel";
+  $("bRows").innerHTML = job.rows.map((r) => {
+    const cls = r.status === "error" || r.status === "skipped" ? `r-${r.status}` : r.review ? "r-review" : "";
+    const st = r.status === "done" && r.review ? "需复核" : STATUS[r.status] || r.status;
+    return `<tr class="${cls}"><td>${r.index}</td><td>${esc(r.description)}</td><td class="mono">${esc(r.code)}</td>
+      <td class="st" title="${esc(r.note)}">${esc(st)}</td></tr>`;
+  }).join("");
+}
+
+$("batchGo").onclick = startBatch;
+$("bDown").onclick = () => { location.href = `/api/batch/${batchId}/download`; };
+$("bStop").onclick = async () => { $("bStop").hidden = true; await api(`/api/batch/${batchId}/cancel`, {}); };
+
+// ---------- 记录库 ----------
+let recTimer = null;
+async function loadRecords() {
+  const q = encodeURIComponent($("recQ").value.trim()), st = $("recStatus").value;
+  const r = await api(`/api/history?q=${q}&status=${st}`);
+  const c = r.counts;
+  $("recCounts").innerHTML = `<span>共 <b>${c.total}</b> 条</span><span>人工确认 <b>${c.confirmed}</b></span><span>人工修正 <b>${c.corrected}</b></span>` +
+    (r.records.length >= 200 ? `<span>只显示最近 200 条，请用搜索缩小范围</span>` : "");
+  $("recRows").innerHTML = r.records.length ? r.records.map((x) => {
+    const cls = x.need_review ? "r-review" : "";
+    const fixed = x.status === "corrected" && x.agent_code !== x.code ? `<div class="detail">Agent 原为 ${esc(x.agent_code)}</div>` : "";
+    return `<tr class="${cls}" data-id="${x.id}"><td>${x.id}</td>
+      <td>${esc(x.description)}<div class="detail">${esc(x.created)}${x.reuse_count ? ` · 沿用 ${x.reuse_count} 次` : ""}${x.note ? ` · 理由：${esc(x.note)}` : ""}</div></td>
+      <td class="mono">${esc(x.code)}${fixed}</td>
+      <td class="st">${esc(x.status_name)}${x.need_review ? "<br>待复核" : ""}</td>
+      <td class="act">${x.status === "agent" ? `<button class="mini" data-act="confirm">正确</button> ` : ""}<button class="mini" data-act="fix">修正</button></td></tr>`;
+  }).join("") : `<tr><td colspan="5" class="note">还没有记录</td></tr>`;
+  for (const btn of $("recRows").querySelectorAll("button[data-act]")) {
+    btn.onclick = async () => {
+      const id = btn.closest("tr").dataset.id;
+      if (btn.dataset.act === "confirm") {
+        const r = await api(`/api/history/${id}/confirm`, {});
+        if (r.error) alert(r.error); else { loadRecords(); loadStatus(); }
+        return;
+      }
+      const tr = btn.closest("tr");
+      if (tr.nextElementSibling && tr.nextElementSibling.classList.contains("fixrow")) return;
+      tr.insertAdjacentHTML("afterend", `<tr class="fixrow"><td></td><td colspan="4"><div class="fixform">
+        <input type="text" class="fc" placeholder="正确编码，如 8516.60.9000" value="${esc(tr.children[2].firstChild.textContent)}">
+        <input type="text" class="fn" placeholder="理由（会作为判例给 Agent 参考）">
+        <button class="primary">保存</button></div></td></tr>`);
+      const row = tr.nextElementSibling;
+      row.querySelector(".fn").focus();
+      row.querySelector("button").onclick = async () => {
+        const r = await api(`/api/history/${id}/correct`, { code: row.querySelector(".fc").value, note: row.querySelector(".fn").value });
+        if (r.error) alert(r.error); else { loadRecords(); loadStatus(); }
+      };
+    };
+  }
+}
+$("recQ").addEventListener("input", () => { clearTimeout(recTimer); recTimer = setTimeout(loadRecords, 300); });
+$("recStatus").onchange = loadRecords;
+// ---------- 头程成本 ----------
+const CATS = ["主干运费", "燃油附加", "旺季附加", "报关费", "清关费", "ISF/AMS", "关税垫付费", "提货费", "派送费", "查验费", "操作费", "仓储费", "保险", "港口费", "预约费", "关税和海关规费", "其他"];
+const DRIVERS = { per_kg: "每公斤", per_cbm: "每方", per_carton: "每箱", per_shipment: "每票", pct_value: "货值%", per_day: "每天", per_unit: "每件" };
+const LKEY = "hs-agent-landed-v1";
+const newProduct = () => ({ name: "", cn_code: "", us_hts: "", units: 100, unit_value_usd: 10, unit_cost_cny: 0, units_per_carton: 1,
+  carton_l: 0, carton_w: 0, carton_h: 0, carton_kg: 0, s232_rate: 0, adcvd_rate: 0, s301_rate: null, exempt_12_5: null });
+const newItem = () => ({ name: "", category: "", driver: "per_shipment", rate: 0, currency: "CNY", min_charge: 0, rate_high: null, qty: null, scenario: false, note: "" });
+const newQuote = () => ({ id: "", forwarder: "", channel: "", transport: "sea", clearance: "self", transit_days: 0, transit_days_high: 0,
+  divisor: 6000, fenpao: 0, min_kg: 0, round_kg: 1, includes: [], items: [Object.assign(newItem(), { name: "运费", category: "主干运费", driver: "per_kg" })], note: "" });
+let L = { products: [newProduct()], settings: { usd_cny: 7.1, arrival: "", destination: "", can_refund: true, invoice_markup_pct: 0,
+  refund_wait_months: 3, annual_rate_pct: 6, daily_profit_cny: 0 }, risks: "", quotes: [] };
+let lastCalc = null, lPick = 0, usFor = -1;
+try { const saved = JSON.parse(localStorage.getItem(LKEY) || "null"); if (saved && saved.products) L = Object.assign(L, saved); } catch (e) {}
+const saveL = () => { try { localStorage.setItem(LKEY, JSON.stringify(L)); } catch (e) {} };
+
+function getPath(path) { return path.split(".").reduce((o, k) => o[k], L); }
+function setPath(path, v) {
+  const ks = path.split("."), last = ks.pop();
+  ks.reduce((o, k) => o[k], L)[last] = v;
+}
+function field(path, label, type = "num", extra = "") {
+  const v = getPath(path);
+  if (type === "bool") return `<label class="chk"><input type="checkbox" data-k="${path}" data-t="bool" ${v ? "checked" : ""}> ${label}</label>`;
+  const shown = v == null ? "" : v;
+  return `<label>${label}<input type="${type === "date" ? "date" : "text"}" data-k="${path}" data-t="${type}" value="${esc(shown)}" ${extra}></label>`;
+}
+function sel(path, opts, label) {
+  const v = getPath(path);
+  const html = `<select data-k="${path}" data-t="sel">${Object.entries(opts).map(([k, t]) => `<option value="${esc(k)}" ${String(v) === k ? "selected" : ""}>${esc(t)}</option>`).join("")}</select>`;
+  return label ? `<label>${label}${html}</label>` : html;
+}
+function parseVal(el) {
+  const t = el.dataset.t;
+  if (t === "bool") return el.checked;
+  if (t === "num" || t === "numnull") { const x = el.value.trim(); if (x === "") return t === "numnull" ? null : 0; const n = Number(x.replace(/[,%]/g, "")); return isNaN(n) ? 0 : n; }
+  if (t === "pct") { const n = Number(el.value.replace("%", "")) || 0; return n > 1 ? n / 100 : n; }
+  if (t === "list") return el.value.split(/[、,，;；\s]+/).filter(Boolean);
+  if (t === "sel") { const x = el.value; return x === "null" ? null : x === "true" ? true : x === "false" ? false : x; }
+  return el.value;
+}
+document.addEventListener("change", (e) => {
+  const el = e.target.closest("[data-k]");
+  if (!el || !el.closest("[data-pane=landed]")) return;
+  setPath(el.dataset.k, parseVal(el));
+  saveL();
+  if (el.dataset.k.endsWith(".clearance") || el.dataset.k.endsWith(".transport")) renderQuotes();
+});
+
+function renderProducts() {
+  $("lProducts").innerHTML = L.products.map((p, i) => `
+    <div class="card"><div class="card-head">商品 ${i + 1}<span class="grow"></span>
+      ${L.products.length > 1 ? `<button class="mini" data-del-product="${i}">删除</button>` : ""}</div>
+      <div class="fields">
+        ${field(`products.${i}.name`, "商品名称", "str")}
+        ${field(`products.${i}.cn_code`, "中国编码（查退税率）", "str")}
+        <label>美国税号<span style="display:flex;gap:4px"><input type="text" data-k="products.${i}.us_hts" data-t="str" value="${esc(p.us_hts)}"><button class="mini" data-us="${i}">查</button></span></label>
+        ${field(`products.${i}.units`, "件数")}
+        ${field(`products.${i}.unit_value_usd`, "申报单价（美元，成交价）")}
+        ${field(`products.${i}.unit_cost_cny`, "含税采购单价（元）")}
+        ${field(`products.${i}.units_per_carton`, "每箱件数")}
+        ${field(`products.${i}.carton_l`, "箱长 cm")}
+        ${field(`products.${i}.carton_w`, "箱宽 cm")}
+        ${field(`products.${i}.carton_h`, "箱高 cm")}
+        ${field(`products.${i}.carton_kg`, "每箱毛重 kg")}
+        ${field(`products.${i}.s301_rate`, "301 税率%（空=按税则）", "numnull")}
+        ${sel(`products.${i}.exempt_12_5`, { null: "按豁免清单判断", true: "在豁免清单内", false: "不豁免" }, "12.5% 加征")}
+        ${field(`products.${i}.s232_rate`, "232 税率%")}
+        ${field(`products.${i}.adcvd_rate`, "反倾销/反补贴 %")}
+      </div>
+      <div id="usList${i}"></div>
+    </div>`).join("");
+  for (const b of $("lProducts").querySelectorAll("[data-del-product]")) b.onclick = () => { L.products.splice(+b.dataset.delProduct, 1); saveL(); renderProducts(); };
+  for (const b of $("lProducts").querySelectorAll("[data-us]")) b.onclick = () => lookupUs(+b.dataset.us);
+}
+
+async function lookupUs(i) {
+  const p = L.products[i];
+  const code = (p.us_hts || p.cn_code || "").replace(/\D/g, "");
+  const box = $(`usList${i}`);
+  if (code.length < 6) { box.innerHTML = `<div class="note">先填中国编码或美国税号的前 6 位。</div>`; return; }
+  const r = await api(`/api/landed/lookup?code=${code}`);
+  if (r.cn && !p.name) { p.name = r.cn.name; }
+  if (!r.us_loaded) { box.innerHTML = `<div class="banner">还没有美国税则数据。在终端运行 python -m hs_agent.us_hts --download 下载后再查。</div>`; return; }
+  if (!r.us_lines.length) { box.innerHTML = `<div class="note">美国税则里 ${esc(r.hs6)} 下面没有税号。</div>`; return; }
+  box.innerHTML = `<div class="hint">美国税则里 ${esc(r.hs6)} 下的税号，点一行选用（只有前 6 位和中国通用，后几位要按美国税则的条文选）：</div><div class="us-list">` +
+    r.us_lines.map((u) => `<div data-code="${esc(u.code)}"><span class="tag">${esc(u.code)}</span><b>${esc(u.general || "（见上级）")}</b>
+      ${u.refs.map((x) => `<span class="badge ${x.kind === "301" ? "b-warn" : "b-info"}">${esc(x.ref)} ${x.extra != null ? "+" + x.extra + "%" : ""}</span>`).join(" ")}
+      <div class="detail">${esc(u.desc)}</div></div>`).join("") + `</div>`;
+  for (const d of box.querySelectorAll("[data-code]")) d.onclick = () => { p.us_hts = d.dataset.code; saveL(); renderProducts(); };
+}
+
+function renderSettings() {
+  $("lSettings").innerHTML = [
+    field("settings.usd_cny", "美元汇率"),
+    field("settings.arrival", "预计到港日（空=今天+时效）", "date"),
+    field("settings.destination", "目的仓（例如 美西 ONT8）", "str"),
+    field("settings.invoice_markup_pct", "工厂开票加点 %"),
+    field("settings.refund_wait_months", "退税到账（月）"),
+    field("settings.annual_rate_pct", "资金成本（年化 %）"),
+    field("settings.daily_profit_cny", "晚到一天少赚（元）"),
+    field("settings.can_refund", "有进项专票、自己报关", "bool"),
+  ].join("");
+  $("lRisks").value = L.risks || "";
+}
+$("lRisks").onchange = () => { L.risks = $("lRisks").value; saveL(); };
+
+function renderQuotes() {
+  $("lQuotes").innerHTML = L.quotes.length ? L.quotes.map((q, i) => `
+    <div class="card"><div class="card-head">报价 ${i + 1}${q.note ? `<span class="note" style="font-weight:400">${esc(q.note)}</span>` : ""}<span class="grow"></span>
+      <button class="mini" data-del-quote="${i}">删除</button></div>
+      <div class="fields">
+        ${field(`quotes.${i}.forwarder`, "货代", "str")}
+        ${field(`quotes.${i}.channel`, "渠道", "str")}
+        ${sel(`quotes.${i}.transport`, { sea: "海运", air: "空运" }, "运输方式")}
+        ${sel(`quotes.${i}.clearance`, { self: "自主清关", ddp: "包税" }, "清关方式")}
+        ${field(`quotes.${i}.transit_days`, "时效（天）")}
+        ${field(`quotes.${i}.transit_days_high`, "最慢时效（天）")}
+        ${field(`quotes.${i}.divisor`, "体积重除数")}
+        <label>分泡让出比例<input type="text" data-k="quotes.${i}.fenpao" data-t="pct" value="${q.fenpao ? Math.round(q.fenpao * 100) + "%" : "0"}"></label>
+        ${field(`quotes.${i}.min_kg`, "最低计费重 kg")}
+        ${field(`quotes.${i}.round_kg`, "计费重进位 kg")}
+        <label style="grid-column:span 2">运费已含（类别，用顿号隔开）<input type="text" data-k="quotes.${i}.includes" data-t="list" value="${esc((q.includes || []).join("、"))}"></label>
+      </div>
+      <div class="scroll-x"><table class="edit"><thead><tr><th style="min-width:130px">费用项</th><th>类别</th><th>计费方式</th><th>单价</th><th>币种</th><th>最低收费</th><th>偏坏单价</th><th>数量</th><th title="只计入偏坏情况，例如 USTR 港口费">只算偏坏</th><th></th></tr></thead><tbody>
+      ${q.items.map((it, j) => `<tr>
+        <td><input type="text" data-k="quotes.${i}.items.${j}.name" data-t="str" value="${esc(it.name)}" title="${esc(it.note || "")}"></td>
+        <td>${sel(`quotes.${i}.items.${j}.category`, Object.fromEntries([["", "自动判断"], ...CATS.map((c) => [c, c])]))}</td>
+        <td>${sel(`quotes.${i}.items.${j}.driver`, DRIVERS)}</td>
+        <td><input type="text" data-k="quotes.${i}.items.${j}.rate" data-t="num" value="${esc(it.rate)}" style="width:80px"></td>
+        <td>${sel(`quotes.${i}.items.${j}.currency`, { CNY: "元", USD: "美元" })}</td>
+        <td><input type="text" data-k="quotes.${i}.items.${j}.min_charge" data-t="num" value="${esc(it.min_charge || "")}" style="width:70px"></td>
+        <td><input type="text" data-k="quotes.${i}.items.${j}.rate_high" data-t="numnull" value="${esc(it.rate_high ?? "")}" style="width:70px"></td>
+        <td><input type="text" data-k="quotes.${i}.items.${j}.qty" data-t="numnull" value="${esc(it.qty ?? "")}" style="width:60px" placeholder="自动"></td>
+        <td class="c"><input type="checkbox" data-k="quotes.${i}.items.${j}.scenario" data-t="bool" ${it.scenario ? "checked" : ""}></td>
+        <td><button class="mini" data-del-item="${i}.${j}">删</button></td></tr>`).join("")}
+      </tbody></table></div>
+      <div class="row" style="margin-top:6px"><button class="mini" data-add-item="${i}">添加费用项</button>
+        <button class="mini" data-add-port="${i}" title="USTR 对中国关联船舶的港口费，目前暂停；只计入偏坏情况">加 USTR 港口费情景</button></div>
+    </div>`).join("") : `<div class="note">还没有报价。</div>`;
+  const box = $("lQuotes");
+  for (const b of box.querySelectorAll("[data-del-quote]")) b.onclick = () => { L.quotes.splice(+b.dataset.delQuote, 1); saveL(); renderQuotes(); };
+  for (const b of box.querySelectorAll("[data-del-item]")) b.onclick = () => { const [i, j] = b.dataset.delItem.split(".").map(Number); L.quotes[i].items.splice(j, 1); saveL(); renderQuotes(); };
+  for (const b of box.querySelectorAll("[data-add-item]")) b.onclick = () => { L.quotes[+b.dataset.addItem].items.push(newItem()); saveL(); renderQuotes(); };
+  for (const b of box.querySelectorAll("[data-add-port]")) b.onclick = () => {
+    L.quotes[+b.dataset.addPort].items.push(Object.assign(newItem(), { name: "USTR 港口费（情景）", category: "港口费", driver: "per_cbm", rate: 2, currency: "USD", scenario: true,
+      note: "按每柜 $120、约 60 方折算，每方约 $2；政策暂停中" }));
+    saveL(); renderQuotes();
+  };
+  $("lBillQuote").innerHTML = L.quotes.map((q, i) => `<option value="${i}">${esc(qTitle(q, i))}</option>`).join("");
+}
+const qTitle = (q, i) => [q.forwarder, q.channel].filter(Boolean).join(" / ") || `报价 ${i + 1}`;
+
+function shipmentBody() {
+  const risks = (L.risks || "").split("\n").map((l) => l.trim()).filter(Boolean).map((l) => {
+    const m = l.match(/^(.+?)\s+([\d.]+)\s*%\s+([\d.,]+)/);
+    return m ? { name: m[1], prob: Number(m[2]) / 100, loss_cny: Number(m[3].replace(/,/g, "")) } : null;
+  }).filter(Boolean);
+  const st = Object.assign({}, L.settings, { risks });
+  if (!st.arrival) delete st.arrival;
+  return { products: L.products, settings: st };
+}
+
+async function fileToB64(f) {
+  const buf = new Uint8Array(await f.arrayBuffer());
+  let bin = "";
+  for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode.apply(null, buf.subarray(i, i + 0x8000));
+  return btoa(bin);
+}
+async function extractQuotes(body, btn) {
+  const old = btn.textContent;
+  btn.disabled = true; btn.textContent = "识别中…";
+  try {
+    const r = await api("/api/quotes/extract", Object.assign({ shipment: shipmentBody() }, body));
+    if (r.error) { alert(r.error); return; }
+    L.quotes.push(...r.quotes.map((q) => Object.assign(q, { id: "" })));
+    saveL(); renderQuotes();
+    $("lCalcNote").textContent = r.via === "ai" ? `识别出 ${r.quotes.length} 个报价（费用约 ${r.cost_yuan} 元），请逐项核对后再计算。` : `从模板读到 ${r.quotes.length} 个报价。`;
+  } finally { btn.disabled = false; btn.textContent = old; }
+}
+$("lExtract").onclick = () => { const t = $("lQuoteText").value.trim(); if (!t) { $("lQuoteText").focus(); return; } extractQuotes({ text: t }, $("lExtract")); };
+$("lQuoteFileBtn").onclick = () => $("lQuoteFile").click();
+$("lQuoteFile").onchange = async (e) => {
+  const f = e.target.files[0]; e.target.value = "";
+  if (!f) return;
+  if (f.size > 8 * 1024 * 1024) { alert("文件太大了（上限 8MB）。"); return; }
+  extractQuotes({ filename: f.name, data: await fileToB64(f) }, $("lQuoteFileBtn"));
+};
+$("lAddQuote").onclick = () => { L.quotes.push(newQuote()); saveL(); renderQuotes(); };
+$("lAddProduct").onclick = () => { L.products.push(newProduct()); saveL(); renderProducts(); };
+
+const yuan = (x) => x == null ? "-" : Number(x).toLocaleString("zh-CN", { maximumFractionDigits: 2 });
+async function runCalc() {
+  $("lCalc").disabled = true;
+  try {
+    const r = await api("/api/landed/calc", { shipment: shipmentBody(), quotes: L.quotes });
+    if (r.error) { $("lResult").innerHTML = `<div class="err">${esc(r.error)}</div>`; return; }
+    lastCalc = r; lPick = Math.min(lPick, r.results.length - 1);
+    renderCalc();
+  } finally { $("lCalc").disabled = false; }
+}
+$("lCalc").onclick = runCalc;
+
+function renderCalc() {
+  const r = lastCalc, multi = L.products.length > 1;
+  const cmp = r.compare.map((c, i) => {
+    const res = r.results[i], pp = res.per_product[0];
+    const flags = [...c.errors.map((t) => ({ level: "error", text: t })), ...c.flags];
+    return `<tr class="pick ${i === lPick ? "on" : ""}" data-pick="${i}">
+      <td>${esc(c.quote)}<div class="detail">${res.transport === "sea" ? "海运" : "空运"} · ${res.clearance === "self" ? "自主清关" : "包税"} · 计费重 ${res.weights.chargeable_kg}kg</div>
+        ${flags.length ? `<ul class="flags">${flags.map((f) => `<li class="flag-${f.level}">${esc(f.text)}</li>`).join("")}</ul>` : ""}</td>
+      <td class="num">${yuan(c.cost)}<div class="detail">偏坏 ${yuan(c.cost_high)}</div></td>
+      <td class="num">${yuan(c.per_kg)}</td>
+      <td class="num">${yuan(c.refund_net)}</td>
+      <td class="num">${multi ? "见明细" : `${yuan(pp.landed_per_unit)}<div class="detail">偏坏 ${yuan(pp.landed_per_unit_high)}</div>`}</td>
+      <td class="num">${c.transit_days || "-"}${c.opportunity ? `<div class="detail">晚到成本 ${yuan(c.opportunity)}</div>` : ""}</td></tr>`;
+  }).join("");
+  const d = r.results[lPick];
+  const w = d.weights;
+  const items = d.items.map((it) => `<tr><td>${esc(it.name)}<div class="detail">${esc(it.category)} · ${esc(it.source)}</div></td><td>${esc(it.basis)}</td>
+    <td class="num">${yuan(it.cny)}${it.cny_high !== it.cny ? `<div class="detail">偏坏 ${yuan(it.cny_high)}</div>` : ""}</td></tr>`).join("");
+  const duties = d.duties.map((x) => `<div class="card"><div class="card-head">${esc(x.product || "")} <span class="tag">${esc(x.code)}</span>合计 ${x.rate}% · $${yuan(x.total)}</div>
+    ${x.layers.map((l) => `<div style="font-size:13px">${esc(l.name)}：${l.rate}% · $${yuan(l.amount)} <span class="detail">${esc(l.basis)}${l.source ? " · " + esc(l.source) : ""}</span></div>`).join("")}
+    ${x.warnings.length ? `<ul class="flags">${x.warnings.map((t) => `<li class="flag-warn">${esc(t)}</li>`).join("")}</ul>` : ""}</div>`).join("");
+  const refunds = d.refunds.map((x) => `<tr><td>${esc(x.product)}<div class="detail">${esc(x.cn_code)}</div></td><td class="num">${x.rate == null ? "-" : x.rate + "%"}</td>
+    <td class="num">${yuan(x.refund)}</td><td class="num">${yuan(x.markup)}</td><td class="num">${yuan(x.capital)}</td><td class="num"><b>${yuan(x.net)}</b></td><td class="note">${esc(x.note)}</td></tr>`).join("");
+  const pp = d.per_product.map((x) => `<tr><td>${esc(x.product)}</td><td class="num">${x.units}</td><td class="num">${yuan(x.logistics_per_unit)} ~ ${yuan(x.logistics_per_unit_high)}</td>
+    <td class="num">${yuan(x.refund_per_unit)}</td><td class="num"><b>${yuan(x.landed_per_unit)}</b> ~ ${yuan(x.landed_per_unit_high)}</td></tr>`).join("");
+  const checks = d.checks.length ? `<ul class="flags">${d.checks.map((c) => `<li class="flag-${c.level}">${esc(c.text)}</li>`).join("")}</ul>` : "";
+  $("lResult").innerHTML = `<div class="stack" style="margin-top:12px">
+    <div class="tbl-wrap" style="max-height:none"><table class="rows"><thead><tr><th>报价（点一行看明细）</th><th class="num">头程 + 税费（元）</th><th class="num">每公斤</th><th class="num">退税净额</th><th class="num">每件到仓</th><th class="num">时效（天）</th></tr></thead><tbody>${cmp}</tbody></table></div>
+    <div class="note">「头程 + 税费」包括报价里的各项费用、关税和海关规费、风险期望损失和在途资金占用；「每件到仓」再加上含税采购价、减去退税净额。偏坏情况用各项的偏坏单价、最慢时效，并计入只算偏坏的情景费用。晚到成本是比最快的报价晚到的天数 × 晚到一天少赚的钱，单独列出，不计入总数。</div>
+    <h2 style="margin-top:8px">${esc(d.quote)} 的明细</h2>
+    <div class="grid2">
+      <div class="cell"><div class="lbl">箱数 / 件数</div><div class="val">${w.cartons} 箱 / ${w.units} 件</div></div>
+      <div class="cell"><div class="lbl">实重 / 体积</div><div class="val">${w.actual_kg}kg / ${w.cbm} 方</div></div>
+      <div class="cell"><div class="lbl">体积重 / 计费重</div><div class="val">${w.volume_kg}kg / ${w.chargeable_kg}kg</div></div>
+      <div class="cell"><div class="lbl">货值 / 预计到港</div><div class="val">$${yuan(w.value_usd)} / ${esc(d.arrival)}</div></div>
+    </div>
+    ${checks}
+    <div class="tbl-wrap" style="max-height:none"><table class="rows"><thead><tr><th>费用项</th><th>怎么算的</th><th class="num">金额（元）</th></tr></thead><tbody>${items}
+      <tr><td><b>合计</b></td><td></td><td class="num"><b>${yuan(d.totals.cost)}</b><div class="detail">偏坏 ${yuan(d.totals.cost_high)}</div></td></tr></tbody></table></div>
+    ${d.clearance === "ddp" && d.implied_ddp ? `<div class="banner" style="background:var(--accent-soft);color:var(--accent)">包税渠道：关税由货代交，已含在运费单价里。按税则测算，这票货的关税和海关规费约 ${yuan(d.implied_ddp.duty_cny)} 元（每公斤约 ${d.implied_ddp.per_kg} 元）。</div>` : ""}
+    ${duties ? `<h3>关税（${d.clearance === "self" ? "自主清关，由你交" : "包税渠道，仅作参考"}）</h3>${duties}` : ""}
+    <h3>出口退税</h3>
+    <div class="tbl-wrap" style="max-height:none"><table class="rows"><thead><tr><th>商品</th><th class="num">退税率</th><th class="num">退税额</th><th class="num">开票加点</th><th class="num">资金占用</th><th class="num">净额</th><th></th></tr></thead><tbody>${refunds}</tbody></table></div>
+    <h3>每件到仓成本</h3>
+    <div class="tbl-wrap" style="max-height:none"><table class="rows"><thead><tr><th>商品</th><th class="num">件数</th><th class="num">头程 + 税费 / 件</th><th class="num">退税 / 件</th><th class="num">到仓成本 / 件（常态 ~ 偏坏）</th></tr></thead><tbody>${pp}</tbody></table></div>
+    <div class="foot">费用按报价和税则估算，仅供比较；关税以美国海关实际核定为准，政策数字的更新日期见上方。</div>
+  </div>`;
+  for (const tr of $("lResult").querySelectorAll("[data-pick]")) tr.onclick = () => { lPick = +tr.dataset.pick; renderCalc(); };
+}
+
+$("lBillGo").onclick = async () => {
+  const qi = Number($("lBillQuote").value);
+  if (!L.quotes[qi]) { alert("先添加报价。"); return; }
+  const text = $("lBillText").value.trim();
+  if (!text) { $("lBillText").focus(); return; }
+  $("lBillGo").disabled = true;
+  try {
+    const r = await api("/api/landed/bill", { shipment: shipmentBody(), quote: L.quotes[qi], text, save: true });
+    if (r.error) { $("lBillResult").innerHTML = `<div class="err">${esc(r.error)}</div>`; return; }
+    $("lBillResult").innerHTML = `<div class="tbl-wrap" style="max-height:none;margin-top:10px"><table class="rows"><thead><tr><th>类别</th><th class="num">报价</th><th class="num">账单</th><th class="num">差额</th><th></th></tr></thead><tbody>
+      ${r.rows.map((x) => `<tr class="${x.flag && x.flag !== "报价有、账单没有" ? "r-review" : ""}"><td>${esc(x.category)}</td><td class="num">${yuan(x.quoted)}</td><td class="num">${yuan(x.billed)}</td><td class="num">${yuan(x.diff)}</td><td>${esc(x.flag)}</td></tr>`).join("")}
+      <tr><td><b>合计</b></td><td class="num">${yuan(r.quoted_total)}</td><td class="num">${yuan(r.billed_total)}</td><td class="num"><b>${yuan(r.diff)}</b></td><td>${r.diff_pct == null ? "" : (r.diff_pct * 100).toFixed(1) + "%"}</td></tr>
+      </tbody></table></div><div class="note">已保存为记录 #${r.record_id}。账单行的类别是按名称自动判断的：${r.lines.map((l) => esc(l.name) + " → " + esc(l.category)).join("；")}</div>`;
+    loadLanded();
+  } finally { $("lBillGo").disabled = false; }
+};
+
+async function loadLanded() {
+  const s = await api("/api/landed/status");
+  const u = s.us_hts;
+  $("lStatus").innerHTML = (u.loaded ? `美国税则：${u.count} 行（${esc(u.source || "")}，${esc(u.saved || "")}）${u.missing_chapters && u.missing_chapters.length ? `，缺第 ${u.missing_chapters.join("、")} 章` : ""}`
+      : `<span class="flag-warn">还没有美国税则数据，关税只能手动填。在终端运行 python -m hs_agent.us_hts --download 下载。</span>`) +
+    ` · 301 清单：${s.s301_count ? s.s301_count + " 个税号" : "<span class=\"flag-warn\">未导入</span>"}` +
+    ` · 9903.05.31 豁免清单：${s.exempt_count ? s.exempt_count + " 条" : "<span class=\"flag-warn\">未导入</span>"} · 政策数字更新于 ${esc(s.policy_updated)}`;
+  const r = await api("/api/landed/records");
+  $("lRecords").innerHTML = r.records.length ? `<div class="tbl-wrap"><table class="rows"><thead><tr><th>#</th><th>报价</th><th class="num">报价</th><th class="num">账单</th><th class="num">差</th><th>差在哪</th></tr></thead><tbody>` +
+    r.records.map((x) => `<tr><td>${x.id}</td><td>${esc(x.title)}<div class="detail">${esc(x.created)}</div></td><td class="num">${yuan(x.quoted)}</td><td class="num">${yuan(x.billed)}</td>
+      <td class="num">${x.diff_pct == null ? "-" : (x.diff_pct * 100).toFixed(1) + "%"}</td><td class="note">${esc(x.flags.join("；"))}</td></tr>`).join("") + `</tbody></table></div>`
+    : "还没有核对记录。";
+}
+renderProducts(); renderSettings(); renderQuotes();
+
 loadStatus();
 loadHistory();
 </script>

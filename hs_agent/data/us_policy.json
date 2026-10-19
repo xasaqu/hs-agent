@@ -1,0 +1,25 @@
+{
+  "updated": "2026-10-19",
+  "note": "美国进口附加税和海关规费。政策变化时改这个文件；日期按「预计到港日」判断，to 留空表示没有截止日期。",
+  "cn_extra": [
+    {"name": "Section 301 新加征", "heading": "9903.05.31", "rate": 12.5, "from": "2026-07-24", "to": "",
+     "note": "对中国原产商品加征，接替到期的 Section 122 临时关税；附有豁免清单（us_exempt_9903_05_31.csv）；属于 232 范围的商品不叠加",
+     "source": "https://www.efanddp.com/IndustryNews/us-section-301-tariffs-china-2026.html"}
+  ],
+  "mpf": [
+    {"from": "2025-10-01", "to": "2026-09-30", "rate": 0.3464, "min": 33.58, "max": 651.50, "note": "FY2026（待核实）"},
+    {"from": "2026-10-01", "to": "", "rate": 0.3464, "min": 34.58, "max": 670.86, "note": "FY2027",
+     "source": "https://www.junologistics.com/customs-updates/us-customs-user-fees-to-increase-for-fiscal-year-2027"}
+  ],
+  "hmf": [
+    {"from": "", "to": "", "rate": 0.125, "note": "只对海运进口收"}
+  ],
+  "informal_limit_usd": 2500,
+  "s232_hints": {
+    "72": "钢铁", "73": "钢铁制品", "76": "铝及其制品", "74": "铜及其制品",
+    "9401": "座椅（软体家具）", "9403": "其他家具", "4418": "木制品（橱柜等）",
+    "8703": "汽车", "8708": "汽车零部件"
+  },
+  "s232_note": "钢、铝、铜的衍生品范围很广（不止这几章），按金属含量计征的要按含量折算；软体家具和橱柜的税率上调推迟到 2027-01-01（待核实）。",
+  "ieepa_note": "IEEPA 关税 2026-02-20 被最高法院裁定无效，已不再征收；之前已缴的退款只退给进口商（IOR）。"
+}
