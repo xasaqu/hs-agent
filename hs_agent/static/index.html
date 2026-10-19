@@ -339,7 +339,7 @@ async function loadStatus() {
   const s = await api("/api/status");
   $("status").innerHTML =
     `模型：${esc(s.model)}<br>HS 2022 子目：${s.hs_count} 个<br>` +
-    `中国 10 位编码：${s.cn_count ? s.cn_count + " 条" : "未导入"}<br>类注、章注：${s.notes ? s.notes + " 个文件" : "未补充"}` +
+    `中国 10 位编码：${s.cn_count ? s.cn_count + " 条" : "未导入"}<br>手工补充的类注、章注：${s.notes ? s.notes + " 个文件" : "无（归类时在线查海关注释）"}` +
     (s.history ? `<br>记录库：${s.history.total} 条（人工确认 ${s.history.confirmed}，修正 ${s.history.corrected}）` : "");
   if (!s.api_key) {
     $("banner").hidden = false;
