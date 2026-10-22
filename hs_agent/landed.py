@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import math
+import re
 import statistics
 from datetime import date, timedelta
 from typing import Literal
@@ -33,14 +34,14 @@ CATEGORIES: list[tuple[str, list[str]]] = [
     ("燃油附加", ["燃油", "baf", "fuel", "lss"]),
     ("旺季附加", ["旺季", "pss", "peak", "gri", "涨价"]),
     ("ISF/AMS", ["isf", "ams", "10+2"]),
-    ("报关费", ["报关", "export declaration", "出口申报"]),
+    ("报关费", ["报关", "export declaration", "出口申报", "文件费", "doc fee", "documentation"]),
     ("清关费", ["清关", "clearance", "customs entry", "broker"]),
     ("查验费", ["查验", "exam", "inspection"]),
-    ("港口费", ["码头", "港口", "港杂", "thc", "port", "车架", "chassis", "清洁"]),
+    ("港口费", ["码头", "港口", "港杂", "thc", "ddc", "port", "车架", "chassis", "清洁", "换单", "卸货"]),
     ("仓储费", ["仓储", "堆存", "滞港", "滞箱", "demurrage", "detention", "storage", "暂存"]),
     ("提货费", ["提货", "上门", "pickup", "pick up"]),
     ("预约费", ["预约", "appointment"]),
-    ("派送费", ["派送", "卡派", "送仓", "delivery", "trucking", "drayage", "尾程", "拖车", "ltl", "ftl"]),
+    ("派送费", ["派送", "卡派", "送仓", "delivery", "trucking", "drayage", "尾程", "拖车", "ltl", "ftl", "偏远"]),
     ("操作费", ["操作", "贴标", "换标", "打托", "托盘", "拆柜", "分货", "handling", "入仓", "配置"]),
     ("保险", ["保险", "insurance"]),
     (DUTY_CAT, ["关税", "duty", "mpf", "hmf", "tariff", "税金", "税费"]),
@@ -53,6 +54,10 @@ REQUIRED = {  # 这类渠道一般都会产生的费用；报价里没写、也�
     ("sea", "ddp"): ["主干运费", "清关费", "派送费"],
     ("air", "ddp"): ["主干运费", "清关费", "派送费"],
 }
+
+
+# 「按实际另收」「到港后另计」这类只说会收、不说多少的写法：总成本里按 0 算，要追问范围和标准
+VAGUE = re.compile(r"实报实销|按实际|按实报|实际产生|以实际|另计|另收|另行收取|到港后")
 
 
 def guess_category(name: str) -> str:
@@ -107,6 +112,7 @@ class FeeItem(BaseModel):
     rate_high: float | None = None   # 偏坏情况的单价（例如旺季、涨价后）
     qty: float | None = None         # 手动指定数量（例如滞港天数）
     scenario: bool = False           # 只计入偏坏情况（例如 USTR 港口费）
+    carton_rule: str = ""            # 每箱计费时，只算满足条件的箱子，例如「重>22」「边>120 或 围>260」
     note: str = ""
 
 
@@ -121,6 +127,7 @@ class Quote(BaseModel):
     divisor: float = 6000
     fenpao: float = 0          # 分泡：抛重部分让给客户的比例，0~1
     min_kg: float = 0
+    min_kg_carton: float = 0   # 单箱最低计费重（例如不足 12kg 按 12kg）；填了就逐箱算计费重
     round_kg: float = 1
     includes: list[str] = []   # 主运费已经包含的费用类别
     items: list[FeeItem] = []
@@ -170,17 +177,50 @@ def _vat(cn: CnTariff, code: str) -> float:
         return 0.13
 
 
+def _charge(kg: float, vol: float, fenpao: float) -> float:
+    return vol - (vol - kg) * fenpao if vol > kg else kg
+
+
 def weights(s: Shipment, q: Quote) -> dict:
     kg = sum(p.kg for p in s.products)
     cbm = sum(p.cbm for p in s.products)
     vol = cbm * 1e6 / q.divisor if q.divisor else 0
-    charge = vol - (vol - kg) * q.fenpao if vol > kg else kg
+    if q.min_kg_carton:  # 逐箱算：每箱的计费重不低于单箱最低计费重，再加总
+        charge = 0.0
+        for p in s.products:
+            box_vol = p.carton_l * p.carton_w * p.carton_h / q.divisor if q.divisor else 0
+            charge += max(_charge(p.carton_kg, box_vol, q.fenpao), q.min_kg_carton) * p.cartons
+    else:
+        charge = _charge(kg, vol, q.fenpao)
     charge = max(charge, q.min_kg)
     if q.round_kg > 0:
         charge = math.ceil(round(charge / q.round_kg, 6)) * q.round_kg
     return {"actual_kg": round(kg, 2), "cbm": round(cbm, 3), "volume_kg": round(vol, 2), "chargeable_kg": round(charge, 2),
             "cartons": sum(p.cartons for p in s.products), "units": sum(p.units for p in s.products),
-            "value_usd": round(sum(p.value_usd for p in s.products), 2)}
+            "value_usd": round(sum(p.value_usd for p in s.products), 2),
+            "boxes": [(p.cartons, p.carton_kg, sorted((p.carton_l, p.carton_w, p.carton_h), reverse=True)) for p in s.products]}
+
+
+RULE_VAR = {"重": "kg", "重量": "kg", "kg": "kg", "边": "side", "长": "side", "边长": "side", "最长边": "side", "side": "side",
+            "围": "girth", "围长": "girth", "girth": "girth"}
+RULE_TERM = re.compile(r"(最长边|边长|重量|围长|girth|side|kg|重|边|长|围)\s*(>=|<=|≥|≤|>|<)\s*(\d+(?:\.\d+)?)", re.I)
+
+
+def parse_rule(rule: str) -> list[list[tuple[str, str, float]]]:
+    """「边>120 或 围>260」→ 或的每一组里，「且」连起来的条件都要满足。围长 = 最长边 + 2 ×（另外两边之和）。"""
+    groups = []
+    for part in re.split(r"或|\||;|；", rule or ""):
+        terms = [(RULE_VAR[m.group(1).lower()], m.group(2).replace("≥", ">=").replace("≤", "<="), float(m.group(3)))
+                 for m in RULE_TERM.finditer(part)]
+        if terms:
+            groups.append(terms)
+    return groups
+
+
+def box_matches(groups: list, kg: float, sides: list[float]) -> bool:
+    vals = {"kg": kg, "side": sides[0], "girth": sides[0] + 2 * (sides[1] + sides[2])}
+    ops = {">": lambda a, b: a > b, ">=": lambda a, b: a >= b, "<": lambda a, b: a < b, "<=": lambda a, b: a <= b}
+    return any(all(ops[op](vals[v], n) for v, op, n in g) for g in groups)
 
 
 def packing_checks(s: Shipment) -> list[dict]:
@@ -214,6 +254,10 @@ def _qty(item: FeeItem, w: dict, days: float) -> tuple[float, str]:
     if d == "per_cbm":
         return w["cbm"], f"{w['cbm']:g} 方"
     if d == "per_carton":
+        groups = parse_rule(item.carton_rule)
+        if groups:
+            n = sum(c for c, kg, sides in w["boxes"] if box_matches(groups, kg, sides))
+            return n, f"{n} 箱（{item.carton_rule}）"
         return w["cartons"], f"{w['cartons']} 箱"
     if d == "per_unit":
         return w["units"], f"{w['units']} 件"
@@ -369,6 +413,12 @@ def compare(results: list[dict], quotes: list[Quote], daily_profit: float = 0) -
     for i, (r, q) in enumerate(zip(results, quotes)):
         flags = []
         listed = {c for c, v in cats[i].items() if v > 0} | set(q.includes)
+        vague = [it.name for it in q.items if not it.rate and VAGUE.search(f"{it.name} {it.note}")]
+        if vague:
+            flags.append({"level": "warn", "text": f"「{'、'.join(vague)}」没给价格（按实际另收），总成本里按 0 算；"
+                                                   "要追问收费标准和大概金额，最好写进报价。"})
+        if VAGUE.search(q.note):
+            flags.append({"level": "warn", "text": "报价备注里有「实报实销 / 另计」之类的写法，要让货代列明包括哪些费用、按什么标准收。"})
         for c in REQUIRED.get((q.transport, q.clearance), []):
             if c not in listed:
                 flags.append({"level": "warn", "text": f"没写「{c}」，也没注明已含在运费里，可能另收。"})

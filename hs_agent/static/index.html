@@ -613,7 +613,7 @@ const DRIVERS = { per_kg: "每公斤", per_cbm: "每方", per_carton: "每箱", 
 const LKEY = "hs-agent-landed-v1";
 const newProduct = () => ({ name: "", cn_code: "", us_hts: "", units: 100, unit_value_usd: 10, unit_cost_cny: 0, units_per_carton: 1,
   carton_l: 0, carton_w: 0, carton_h: 0, carton_kg: 0, s232_rate: 0, adcvd_rate: 0, s301_rate: null, exempt_12_5: null });
-const newItem = () => ({ name: "", category: "", driver: "per_shipment", rate: 0, currency: "CNY", min_charge: 0, rate_high: null, qty: null, scenario: false, note: "" });
+const newItem = () => ({ name: "", category: "", driver: "per_shipment", rate: 0, currency: "CNY", min_charge: 0, rate_high: null, qty: null, scenario: false, carton_rule: "", note: "" });
 const newQuote = () => ({ id: "", forwarder: "", channel: "", transport: "sea", clearance: "self", transit_days: 0, transit_days_high: 0,
   divisor: 6000, fenpao: 0, min_kg: 0, round_kg: 1, includes: [], items: [Object.assign(newItem(), { name: "运费", category: "主干运费", driver: "per_kg" })], note: "" });
 let L = { products: [newProduct()], settings: { usd_cny: 7.1, arrival: "", destination: "", can_refund: true, invoice_markup_pct: 0,
@@ -727,10 +727,11 @@ function renderQuotes() {
         ${field(`quotes.${i}.divisor`, "体积重除数")}
         <label>分泡让出比例<input type="text" data-k="quotes.${i}.fenpao" data-t="pct" value="${q.fenpao ? Math.round(q.fenpao * 100) + "%" : "0"}"></label>
         ${field(`quotes.${i}.min_kg`, "最低计费重 kg")}
+        ${field(`quotes.${i}.min_kg_carton`, "单箱最低计费重 kg")}
         ${field(`quotes.${i}.round_kg`, "计费重进位 kg")}
         <label style="grid-column:span 2">运费已含（类别，用顿号隔开）<input type="text" data-k="quotes.${i}.includes" data-t="list" value="${esc((q.includes || []).join("、"))}"></label>
       </div>
-      <div class="scroll-x"><table class="edit"><thead><tr><th style="min-width:130px">费用项</th><th>类别</th><th>计费方式</th><th>单价</th><th>币种</th><th>最低收费</th><th>偏坏单价</th><th>数量</th><th title="只计入偏坏情况，例如 USTR 港口费">只算偏坏</th><th></th></tr></thead><tbody>
+      <div class="scroll-x"><table class="edit"><thead><tr><th style="min-width:130px">费用项</th><th>类别</th><th>计费方式</th><th>单价</th><th>币种</th><th>最低收费</th><th>偏坏单价</th><th>数量</th><th title="每箱计费时只算满足条件的箱子。重 = 单箱实重 kg，边 = 最长边 cm，围 = 最长边 + 2×另两边；例如：重>22、边>120 或 围>260">每箱条件</th><th title="只计入偏坏情况，例如 USTR 港口费">只算偏坏</th><th></th></tr></thead><tbody>
       ${q.items.map((it, j) => `<tr>
         <td><input type="text" data-k="quotes.${i}.items.${j}.name" data-t="str" value="${esc(it.name)}" title="${esc(it.note || "")}"></td>
         <td>${sel(`quotes.${i}.items.${j}.category`, Object.fromEntries([["", "自动判断"], ...CATS.map((c) => [c, c])]))}</td>
@@ -740,6 +741,7 @@ function renderQuotes() {
         <td><input type="text" data-k="quotes.${i}.items.${j}.min_charge" data-t="num" value="${esc(it.min_charge || "")}" style="width:70px"></td>
         <td><input type="text" data-k="quotes.${i}.items.${j}.rate_high" data-t="numnull" value="${esc(it.rate_high ?? "")}" style="width:70px"></td>
         <td><input type="text" data-k="quotes.${i}.items.${j}.qty" data-t="numnull" value="${esc(it.qty ?? "")}" style="width:60px" placeholder="自动"></td>
+        <td><input type="text" data-k="quotes.${i}.items.${j}.carton_rule" data-t="str" value="${esc(it.carton_rule || "")}" style="width:110px" placeholder="${it.driver === "per_carton" ? "全部箱子" : ""}"></td>
         <td class="c"><input type="checkbox" data-k="quotes.${i}.items.${j}.scenario" data-t="bool" ${it.scenario ? "checked" : ""}></td>
         <td><button class="mini" data-del-item="${i}.${j}">删</button></td></tr>`).join("")}
       </tbody></table></div>

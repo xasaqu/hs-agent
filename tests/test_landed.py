@@ -3,6 +3,7 @@
 import asyncio
 import io
 import json
+import math
 from datetime import date
 
 import pytest
@@ -10,7 +11,8 @@ from openpyxl import load_workbook
 
 from hs_agent.cn_tariff import CnTariff
 from hs_agent.duty import Policy, entry_fees, line_duty
-from hs_agent.landed import BillItem, FeeItem, Product, Quote, Settings, Shipment, calc, check_bill, compare, guess_category, weights
+from hs_agent.landed import (BillItem, FeeItem, Product, Quote, Settings, Shipment, _qty, calc, check_bill, compare,
+                             guess_category, parse_rule, weights)
 from hs_agent.quotes import extract, parse_bill_lines, read_file, template_excel
 from hs_agent.us_hts import UsHts, build, ch99_extra, merge_chapters, parse_rate, read_usitc
 
@@ -147,6 +149,22 @@ def test_weights_and_fenpao():
     assert weights(s, Quote(divisor=6000, min_kg=5000))["chargeable_kg"] == 5000
 
 
+def test_carton_min_and_rules():
+    # 两种箱子：轻小箱 50 箱（30×30×30cm、5kg），大重箱 10 箱（130×50×40cm、30kg）
+    s = Shipment(products=[Product(units=50, unit_value_usd=1, carton_l=30, carton_w=30, carton_h=30, carton_kg=5),
+                           Product(units=10, unit_value_usd=1, carton_l=130, carton_w=50, carton_h=40, carton_kg=30)],
+                 settings=Settings(usd_cny=7))
+    # 设了单箱最低就逐箱算：轻箱每箱 max(5, 4.5, 12)=12，重箱每箱 max(30, 43.33)=43.33
+    assert weights(s, Quote(divisor=6000, min_kg_carton=12))["chargeable_kg"] == math.ceil(50 * 12 + 10 * 260000 / 6000)
+    w = weights(s, Quote(divisor=6000))
+    over = FeeItem(name="超重费", driver="per_carton", rate=180, carton_rule="重>22")
+    long_ = FeeItem(name="超长费", driver="per_carton", rate=180, carton_rule="边>120 或 围>260")
+    big = FeeItem(name="超大件", driver="per_carton", rate=1300, carton_rule="围>=320 且 围<400 或 边>=175 且 边<240")
+    assert _qty(over, w, 0)[0] == 10 and _qty(long_, w, 0)[0] == 10 and _qty(big, w, 0)[0] == 0
+    assert _qty(FeeItem(name="贴标", driver="per_carton", rate=1), w, 0)[0] == 60
+    assert parse_rule("单箱实重>22kg 或 最长边≥120cm") == [[("kg", ">", 22)], [("side", ">=", 120)]]
+
+
 def test_packing_checks():
     s = shipment(carton_kg=25, carton_l=70)
     texts = [c["text"] for c in calc(s, sea_quote(), build(RAW, "t"), Policy(DATA / "us_policy.json"), CnTariff(Path("none")))["checks"]]
@@ -204,6 +222,17 @@ def test_compare_flags(tmp_path, hts, policy):
     assert not any("没写" in f["text"] for f in rows[0]["flags"])
 
 
+def test_compare_vague_fees(tmp_path, hts, policy):
+    s, cn = shipment(), cn_table(tmp_path)
+    q = sea_quote(note="目的港费用实报实销")
+    q.items.append(FeeItem(name="查验费", note="按实际另收"))
+    q.items.append(FeeItem(name="换单费", rate=300))
+    r = calc(s, q, hts, policy, cn)
+    texts = " ".join(f["text"] for f in compare([r], [q])[0]["flags"])
+    assert "「查验费」没给价格" in texts and "实报实销" in texts
+    assert {i["name"]: i["category"] for i in r["items"]}["换单费"] == "港口费"
+
+
 def test_bill_check(tmp_path, hts, policy):
     r = calc(shipment(), sea_quote(), hts, policy, cn_table(tmp_path))
     bill = parse_bill_lines("海派运费 16200\n报关费 150\n清关费 USD 100\nISF 35 USD\n卡派 2496\n查验费 USD 300\n关税 USD 2250\nMPF 34.58 USD\nHMF 7.5 USD")
@@ -220,7 +249,8 @@ def test_template_roundtrip():
     quotes, text = read_file(template_excel(), "报价模板.xlsx")
     assert text == "" and len(quotes) == 2
     a, b = quotes
-    assert a.forwarder == "示例货代" and len(a.items) == 5 and a.items[2].currency == "USD" and a.items[4].min_charge == 800
+    assert a.forwarder == "示例货代" and len(a.items) == 7 and a.items[2].currency == "USD" and a.items[4].min_charge == 800
+    assert a.min_kg_carton == 12 and a.items[5].carton_rule == "重>22" and a.items[6].driver == "per_carton"
     assert a.items[0].rate_high == 11 and a.transit_days_high == 35
     assert b.clearance == "ddp" and "派送费" in b.includes and b.min_kg == 100
     ws = load_workbook(io.BytesIO(template_excel())).worksheets[1]

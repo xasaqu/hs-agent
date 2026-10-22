@@ -23,8 +23,8 @@ from .landed import CATEGORY_NAMES, DRIVER_NAMES, BillItem, FeeItem, Quote, Ship
 MAX_TEXT = 40000
 
 TEMPLATE_HEAD = ["货代", "渠道名称", "运输方式", "清关方式", "时效（天）", "最慢时效（天）", "体积重除数", "分泡让出比例",
-                 "最低计费重（kg）", "计费重进位（kg）", "运费已含", "费用项", "费用类别", "计费方式", "单价", "币种",
-                 "最低收费", "偏坏情况单价", "备注"]
+                 "最低计费重（kg）", "单箱最低计费重（kg）", "计费重进位（kg）", "运费已含", "费用项", "费用类别", "计费方式",
+                 "单价", "币种", "最低收费", "偏坏情况单价", "每箱条件", "备注"]
 DRIVER_BY_NAME = {"每公斤": "per_kg", "每kg": "per_kg", "公斤": "per_kg", "kg": "per_kg", "每方": "per_cbm", "方": "per_cbm",
                   "cbm": "per_cbm", "每箱": "per_carton", "箱": "per_carton", "每票": "per_shipment", "票": "per_shipment",
                   "货值百分比": "pct_value", "百分比": "pct_value", "%": "pct_value", "每天": "per_day", "天": "per_day",
@@ -59,19 +59,21 @@ def template_excel() -> bytes:
     ws.title = "报价"
     ws.append(TEMPLATE_HEAD)
     rows = [
-        ["示例货代", "美森海派自清", "海运", "自主清关", 25, 35, 6000, 0, 21, 1, "", "海派运费（美西）", "主干运费", "每公斤", 9.5, "CNY", 0, 11, "21kg 以上档"],
-        ["", "", "", "", "", "", "", "", "", "", "", "报关费", "报关费", "每票", 150, "CNY", 0, "", ""],
-        ["", "", "", "", "", "", "", "", "", "", "", "清关费", "清关费", "每票", 100, "USD", 0, "", ""],
-        ["", "", "", "", "", "", "", "", "", "", "", "ISF 申报", "ISF/AMS", "每票", 35, "USD", 0, "", ""],
-        ["", "", "", "", "", "", "", "", "", "", "", "卡派到仓", "派送费", "每方", 260, "CNY", 800, 320, ""],
-        ["示例货代B", "普船海派包税", "海运", "包税", 35, 45, 6000, 0, 100, 1, "清关费、关税和海关规费、派送费", "包税海派单价", "主干运费", "每公斤", 14, "CNY", 0, "", "含税含派"],
+        ["示例货代", "美森海派自清", "海运", "自主清关", 25, 35, 6000, 0, 21, 12, 1, "", "海派运费（美西）", "主干运费", "每公斤", 9.5, "CNY", 0, 11, "", "21kg 以上档"],
+        ["", "", "", "", "", "", "", "", "", "", "", "", "报关费", "报关费", "每票", 150, "CNY", 0, "", "", ""],
+        ["", "", "", "", "", "", "", "", "", "", "", "", "清关费", "清关费", "每票", 100, "USD", 0, "", "", ""],
+        ["", "", "", "", "", "", "", "", "", "", "", "", "ISF 申报", "ISF/AMS", "每票", 35, "USD", 0, "", "", ""],
+        ["", "", "", "", "", "", "", "", "", "", "", "", "卡派到仓", "派送费", "每方", 260, "CNY", 800, 320, "", ""],
+        ["", "", "", "", "", "", "", "", "", "", "", "", "超重费", "操作费", "每箱", 180, "CNY", 0, "", "重>22", "单箱实重超过 22kg"],
+        ["", "", "", "", "", "", "", "", "", "", "", "", "超长费", "操作费", "每箱", 180, "CNY", 0, "", "边>120 或 围>260", "围长 = 最长边 + 2×(另两边)"],
+        ["示例货代B", "普船海派包税", "海运", "包税", 35, 45, 6000, 0, 100, "", 1, "清关费、关税和海关规费、派送费", "包税海派单价", "主干运费", "每公斤", 14, "CNY", 0, "", "", "含税含派"],
     ]
     for r in rows:
         ws.append(r)
     head = PatternFill("solid", fgColor="E8EEF7")
     for c in ws[1]:
         c.font, c.fill = Font(bold=True), head
-    for i, w in enumerate([12, 16, 8, 10, 9, 11, 10, 11, 12, 12, 24, 18, 12, 12, 8, 6, 9, 12, 16], 1):
+    for i, w in enumerate([12, 16, 8, 10, 9, 11, 10, 11, 12, 14, 12, 24, 18, 12, 12, 8, 6, 9, 12, 18, 22], 1):
         ws.column_dimensions[ws.cell(1, i).column_letter].width = w
     note = wb.create_sheet("说明")
     for line in [
@@ -82,6 +84,9 @@ def template_excel() -> bytes:
         "分泡让出比例：抛重部分让给客户的比例，例如五五分泡填 50%（或 0.5），不分泡填 0。",
         "运费已含：主运费里已经包含的费用类别，用顿号隔开，例如「清关费、派送费」。",
         "偏坏情况单价：旺季、涨价后的单价，不填则和单价相同。",
+        "单箱最低计费重：例如「单箱不足 12kg 按 12kg」填 12；填了就逐箱算计费重再加总。",
+        "每箱条件：超重费、超长费这类只对部分箱子收的每箱费用，写收费条件。重 = 单箱实重（kg），边 = 最长边（cm），"
+        "围 = 最长边 + 2 ×（另两边之和）（cm）；「或」任一满足，「且」同时满足。例如：重>22；边>120 或 围>260。",
     ]:
         note.append([line])
     note.column_dimensions["A"].width = 120
@@ -120,7 +125,8 @@ def read_template(rows: list[list]) -> list[Quote]:
                 clearance="ddp" if "包" in str(get(r, "清关方式") or "") or "双清" in str(get(r, "清关方式") or "") else "self",
                 transit_days=_num(get(r, "时效（天）")), transit_days_high=_num(get(r, "最慢时效（天）")),
                 divisor=_num(get(r, "体积重除数"), 6000) or 6000, fenpao=fenpao / 100 if fenpao > 1 else fenpao,
-                min_kg=_num(get(r, "最低计费重（kg）")), round_kg=_num(get(r, "计费重进位（kg）"), 1),
+                min_kg=_num(get(r, "最低计费重（kg）")), min_kg_carton=_num(get(r, "单箱最低计费重（kg）")),
+                round_kg=_num(get(r, "计费重进位（kg）"), 1),
                 includes=[guess_category(x) if x not in CATEGORY_NAMES else x for x in includes],
             ))
         name = str(get(r, "费用项") or "").strip()
@@ -132,7 +138,7 @@ def read_template(rows: list[list]) -> list[Quote]:
             name=name, category=cat if cat in CATEGORY_NAMES else guess_category(name), driver=_driver(get(r, "计费方式")),
             rate=_num(get(r, "单价")), currency="USD" if "USD" in str(get(r, "币种") or "").upper() or "美" in str(get(r, "币种") or "") else "CNY",
             min_charge=_num(get(r, "最低收费")), rate_high=_num(high) if high not in (None, "") else None,
-            note=str(get(r, "备注") or "").strip(),
+            carton_rule=str(get(r, "每箱条件") or "").strip(), note=str(get(r, "备注") or "").strip(),
         ))
     return [q for q in quotes if q.items]
 
@@ -157,13 +163,16 @@ EXTRACT_PROMPT = """你是货代报价分析助手。把下面的头程报价（
 - clearance "self"（自主清关、卖家做进口商、不包税）或 "ddp"（包税、双清包税、DDP）
 - transit_days 常态时效天数，transit_days_high 最慢时效天数（写「25-35 天」就是 25 和 35）
 - divisor 体积重除数（默认 6000）；fenpao 分泡时抛重让给客户的比例（五五分泡 0.5，不分泡 0）
-- min_kg 最低计费重；round_kg 计费重进位（不写就 1）
+- min_kg 整票最低计费重；min_kg_carton 单箱最低计费重（「单箱不足 12kg 按 12kg」就是 12，没有填 0）；round_kg 计费重进位（不写就 1）
 - includes 主运费已经包含的费用类别（例如报价写「含税含派」就是 ["清关费", "关税和海关规费", "派送费"]）
 - items 费用项列表，每项：name 原文名称，category 类别（只能从 {categories} 里选），
   driver 计费方式（只能是 per_kg 每公斤计费重、per_cbm 每方、per_carton 每箱、per_shipment 每票、pct_value 货值百分比、per_day 每天、per_unit 每件），
   rate 单价（数字；货值百分比填百分数，如 0.3），currency "CNY" 或 "USD"，min_charge 最低收费（没有填 0），
-  rate_high 旺季或上涨后的单价（报价里没有就填 null），note 备注（选了哪一档、有什么条件）
-- note 整个报价的备注：有效期、不包含的项目、特别条件
+  rate_high 旺季或上涨后的单价（报价里没有就填 null），note 备注（选了哪一档、有什么条件），
+  carton_rule 只对满足条件的箱子收的每箱费用（超重、超长、超大件等）写条件，否则填 ""。
+  条件写法：重（单箱实重 kg）、边（最长边 cm）、围（围长 = 最长边 + 2×另两边之和，cm），用 > >= < <= 比较；
+  「或」连接任一满足即可，「且」连接要同时满足。例如「重>22」「边>120 或 围>260」「围>=320 且 围<400 或 边>=175 且 边<240」
+- note 整个报价的备注：有效期、不包含的项目、特别条件；有免费仓储期 / 免费用箱期的，写明多少天、从哪天起算，以及超期怎么收
 
 规则：
 1. 价格按重量段、目的仓分档的，只取适合这票货的那一档，在 note 里写明选的哪一档；目的仓不明确时取美西。
@@ -196,7 +205,7 @@ def coerce_quote(d: dict, idx: int) -> Quote:
             currency="USD" if str(it.get("currency", "")).upper() == "USD" else "CNY",
             min_charge=_num(it.get("min_charge")),
             rate_high=_num(it["rate_high"]) if it.get("rate_high") not in (None, "") else None,
-            note=str(it.get("note") or "")[:200],
+            carton_rule=str(it.get("carton_rule") or "")[:80], note=str(it.get("note") or "")[:200],
         ))
     fenpao = _num(d.get("fenpao"))
     try:
@@ -205,7 +214,7 @@ def coerce_quote(d: dict, idx: int) -> Quote:
             transport="air" if d.get("transport") == "air" else "sea", clearance="ddp" if d.get("clearance") == "ddp" else "self",
             transit_days=_num(d.get("transit_days")), transit_days_high=_num(d.get("transit_days_high")),
             divisor=_num(d.get("divisor"), 6000) or 6000, fenpao=fenpao / 100 if fenpao > 1 else fenpao,
-            min_kg=_num(d.get("min_kg")), round_kg=_num(d.get("round_kg"), 1) or 1,
+            min_kg=_num(d.get("min_kg")), min_kg_carton=_num(d.get("min_kg_carton")), round_kg=_num(d.get("round_kg"), 1) or 1,
             includes=[c for c in d.get("includes") or [] if c in CATEGORY_NAMES], items=items,
             note=str(d.get("note") or "")[:500],
         )
