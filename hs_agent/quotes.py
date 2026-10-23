@@ -27,7 +27,7 @@ TEMPLATE_HEAD = ["货代", "渠道名称", "运输方式", "清关方式", "时�
                  "单价", "币种", "最低收费", "偏坏情况单价", "每箱条件", "备注"]
 DRIVER_BY_NAME = {"每公斤": "per_kg", "每kg": "per_kg", "公斤": "per_kg", "kg": "per_kg", "每方": "per_cbm", "方": "per_cbm",
                   "cbm": "per_cbm", "每箱": "per_carton", "箱": "per_carton", "每票": "per_shipment", "票": "per_shipment",
-                  "货值百分比": "pct_value", "百分比": "pct_value", "%": "pct_value", "每天": "per_day", "天": "per_day",
+                  "货值百分比": "pct_value", "运费百分比": "pct_freight", "百分比": "pct_value", "%": "pct_value", "每天": "per_day", "天": "per_day",
                   "每件": "per_unit", "件": "per_unit"}
 DRIVER_BY_NAME.update({v.split("（")[0]: k for k, v in DRIVER_NAMES.items()})
 
@@ -79,7 +79,7 @@ def template_excel() -> bytes:
     for line in [
         "一家货代的一个渠道占若干行：第一行填渠道信息（货代到运费已含），后面每行一个费用项，渠道信息可以留空。",
         "运输方式：海运 / 空运；清关方式：自主清关 / 包税。",
-        "计费方式：" + "、".join(v.split("（")[0] for v in DRIVER_NAMES.values()) + "。货值百分比的单价填百分数，例如 0.3。",
+        "计费方式：" + "、".join(v.split("（")[0] for v in DRIVER_NAMES.values()) + "。货值百分比、运费百分比的单价填百分数，例如 0.3、25。燃油附加、旺季附加一般是运费百分比。",
         "费用类别：" + "、".join(CATEGORY_NAMES) + "。不填会按费用项名称自动判断。",
         "分泡让出比例：抛重部分让给客户的比例，例如五五分泡填 50%（或 0.5），不分泡填 0。",
         "运费已含：主运费里已经包含的费用类别，用顿号隔开，例如「清关费、派送费」。",
@@ -166,7 +166,7 @@ EXTRACT_PROMPT = """你是货代报价分析助手。把下面的头程报价（
 - min_kg 整票最低计费重；min_kg_carton 单箱最低计费重（「单箱不足 12kg 按 12kg」就是 12，没有填 0）；round_kg 计费重进位（不写就 1）
 - includes 主运费已经包含的费用类别（例如报价写「含税含派」就是 ["清关费", "关税和海关规费", "派送费"]）
 - items 费用项列表，每项：name 原文名称，category 类别（只能从 {categories} 里选），
-  driver 计费方式（只能是 per_kg 每公斤计费重、per_cbm 每方、per_carton 每箱、per_shipment 每票、pct_value 货值百分比、per_day 每天、per_unit 每件），
+  driver 计费方式（只能是 per_kg 每公斤计费重、per_cbm 每方、per_carton 每箱、per_shipment 每票、pct_value 货值百分比（保险等）、pct_freight 运费百分比（燃油附加、旺季附加等按运费加收的）、per_day 每天、per_unit 每件），
   rate 单价（数字；货值百分比填百分数，如 0.3），currency "CNY" 或 "USD"，min_charge 最低收费（没有填 0），
   rate_high 旺季或上涨后的单价（报价里没有就填 null），note 备注（选了哪一档、有什么条件），
   carton_rule 只对满足条件的箱子收的每箱费用（超重、超长、超大件等）写条件，否则填 ""。

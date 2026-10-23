@@ -165,6 +165,17 @@ def test_carton_min_and_rules():
     assert parse_rule("单箱实重>22kg 或 最长边≥120cm") == [[("kg", ">", 22)], [("side", ">=", 120)]]
 
 
+def test_fuel_pct_of_freight(tmp_path, hts, policy):
+    q = sea_quote(transport="air")
+    q.items.append(FeeItem(name="燃油附加费", driver="pct_value", rate=25, rate_high=30))  # 识别成货值百分比也会纠正
+    assert q.items[-1].driver == "pct_freight"
+    r = calc(shipment(), q, hts, policy, cn_table(tmp_path))
+    fuel = next(i for i in r["items"] if i["name"] == "燃油附加费")
+    freight = next(i for i in r["items"] if i["name"] == "海派运费")
+    assert fuel["cny"] == pytest.approx(freight["cny"] * 0.25) and fuel["cny_high"] == pytest.approx(freight["cny_high"] * 0.30)
+    assert FeeItem(name="保险", driver="pct_value", rate=0.3).driver == "pct_value"
+
+
 def test_packing_checks():
     s = shipment(carton_kg=25, carton_l=70)
     texts = [c["text"] for c in calc(s, sea_quote(), build(RAW, "t"), Policy(DATA / "us_policy.json"), CnTariff(Path("none")))["checks"]]

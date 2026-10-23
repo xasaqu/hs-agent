@@ -12,7 +12,7 @@ import statistics
 from datetime import date, timedelta
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from .cn_tariff import CnTariff
 from .duty import DutyResult, Layer, Policy, entry_fees, line_duty
@@ -23,9 +23,11 @@ LB50_KG = 22.68
 LB100_KG = 45.36
 SIDE_25IN_CM = 63.5
 
-Driver = Literal["per_kg", "per_cbm", "per_carton", "per_shipment", "pct_value", "per_day", "per_unit"]
+Driver = Literal["per_kg", "per_cbm", "per_carton", "per_shipment", "pct_value", "pct_freight", "per_day", "per_unit"]
 DRIVER_NAMES = {"per_kg": "每公斤（计费重）", "per_cbm": "每方", "per_carton": "每箱", "per_shipment": "每票",
-                "pct_value": "货值百分比", "per_day": "每天", "per_unit": "每件"}
+                "pct_value": "货值百分比", "pct_freight": "运费百分比", "per_day": "每天", "per_unit": "每件"}
+# 燃油、旺季附加按运费的百分比收；报价写成「货值百分比」多半是识别错了
+FREIGHT_PCT_CATS = ("燃油附加", "旺季附加")
 
 DUTY_CAT = "关税和海关规费"
 # 费用类别，以及识别用的关键词（按顺序匹配，先匹配到的为准）
@@ -114,6 +116,12 @@ class FeeItem(BaseModel):
     scenario: bool = False           # 只计入偏坏情况（例如 USTR 港口费）
     carton_rule: str = ""            # 每箱计费时，只算满足条件的箱子，例如「重>22」「边>120 或 围>260」
     note: str = ""
+
+    @model_validator(mode="after")
+    def _fuel_on_freight(self):
+        if self.driver == "pct_value" and (self.category or guess_category(self.name)) in FREIGHT_PCT_CATS:
+            self.driver = "pct_freight"
+        return self
 
 
 class Quote(BaseModel):
@@ -280,7 +288,8 @@ def calc(s: Shipment, q: Quote, hts: UsHts, policy: Policy, cn: CnTariff) -> dic
         items.append({"name": name, "category": category, "basis": basis, "cny": round(normal_cny, 2),
                       "cny_high": round(high_cny, 2), "usd": None if usd is None else round(usd, 2), "source": source})
 
-    for it in q.items:
+    # 按运费百分比收的（燃油附加等）放到最后算，基数是前面各项里的主干运费
+    for it in sorted(q.items, key=lambda x: x.driver == "pct_freight"):
         n, basis = _qty(it, w, it.qty or 0)
         cur = fx if it.currency == "USD" else 1
         unit = "美元" if it.currency == "USD" else "元"
@@ -288,6 +297,13 @@ def calc(s: Shipment, q: Quote, hts: UsHts, policy: Policy, cn: CnTariff) -> dic
         if it.driver == "pct_value":  # 货值是美元，按货值的百分比算出来先是美元
             normal_raw, high_raw = it.rate * n * fx, high_rate * n * fx
             txt = f"货值 ${w['value_usd']:,.2f} × {it.rate:g}%"
+        elif it.driver == "pct_freight":
+            base_n = sum(i["cny"] for i in items if i["category"] == "主干运费")
+            base_h = sum(i["cny_high"] for i in items if i["category"] == "主干运费")
+            normal_raw, high_raw = it.rate / 100 * base_n, high_rate / 100 * base_h
+            txt = f"主干运费 {base_n:,.2f} 元 × {it.rate:g}%"
+            if not base_n:
+                checks.append({"level": "warn", "text": f"「{it.name}」按运费百分比计，但报价里没有主干运费，算出来是 0。"})
         else:
             normal_raw, high_raw = it.rate * n * cur, high_rate * n * cur
             txt = f"{it.rate:g} {unit} × {basis}"

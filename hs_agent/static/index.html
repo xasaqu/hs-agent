@@ -609,7 +609,7 @@ $("recQ").addEventListener("input", () => { clearTimeout(recTimer); recTimer = s
 $("recStatus").onchange = loadRecords;
 // ---------- 头程成本 ----------
 const CATS = ["主干运费", "燃油附加", "旺季附加", "报关费", "清关费", "ISF/AMS", "关税垫付费", "提货费", "派送费", "查验费", "操作费", "仓储费", "保险", "港口费", "预约费", "关税和海关规费", "其他"];
-const DRIVERS = { per_kg: "每公斤", per_cbm: "每方", per_carton: "每箱", per_shipment: "每票", pct_value: "货值%", per_day: "每天", per_unit: "每件" };
+const DRIVERS = { per_kg: "每公斤", per_cbm: "每方", per_carton: "每箱", per_shipment: "每票", pct_value: "货值%", pct_freight: "运费%", per_day: "每天", per_unit: "每件" };
 const LKEY = "hs-agent-landed-v1";
 const newProduct = () => ({ name: "", cn_code: "", us_hts: "", units: 100, unit_value_usd: 10, unit_cost_cny: 0, units_per_carton: 1,
   carton_l: 0, carton_w: 0, carton_h: 0, carton_kg: 0, s232_rate: 0, adcvd_rate: 0, s301_rate: null, exempt_12_5: null });
